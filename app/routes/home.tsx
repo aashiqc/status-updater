@@ -252,6 +252,49 @@ export default function Home() {
   const handleTabChange = (type: StatusType) => {
     setStatusType(type);
 
+    // Integrate timer controls with tab changes
+    if (type === "START") {
+      // Reset and start the timer
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+      setTimerSeconds(0);
+      setFinalTime(null);
+      setTimerState("running");
+      timerIntervalRef.current = setInterval(() => {
+        setTimerSeconds((prev) => prev + 1);
+      }, 1000);
+    } else if (type === "PAUSE") {
+      // Pause the timer if it's running
+      if (timerState === "running") {
+        if (timerIntervalRef.current) {
+          clearInterval(timerIntervalRef.current);
+          timerIntervalRef.current = null;
+        }
+        setTimerState("paused");
+      }
+    } else if (type === "STOP") {
+      // Stop the timer and auto-fill time taken fields
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+
+      const timeString = formatTime(timerSeconds);
+      setFinalTime(timeString);
+      setTimerState("stopped");
+
+      // Auto-fill the time taken fields (only if timer was used)
+      if (timerSeconds > 0) {
+        const hours = Math.floor(timerSeconds / 3600);
+        const minutes = Math.floor((timerSeconds % 3600) / 60);
+        setFormData((prev) => ({
+          ...prev,
+          timeTakenHours: hours.toString(),
+          timeTakenMinutes: minutes.toString(),
+        }));
+      }
+    }
   };
 
   const ConfigIcon = STATUS_CONFIG[statusType].icon;
@@ -591,52 +634,18 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Timer Controls */}
-              <div className="flex items-center justify-center gap-4">
-                {/* Start Button */}
-                {(timerState === "idle" || timerState === "paused") && (
-                  <button
-                    onClick={startTimer}
-                    className="group flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#7c4dff] to-[#6b3fd4] text-white font-bold uppercase tracking-wider text-sm transition-all duration-200 hover:shadow-[0_0_30px_rgba(124,77,255,0.5)] hover:scale-105"
-                  >
-                    <Play className="w-5 h-5 transition-transform group-hover:scale-110" />
-                    {timerState === "paused" ? "Resume" : "Start"}
-                  </button>
-                )}
-
-                {/* Pause Button */}
-                {timerState === "running" && (
-                  <button
-                    onClick={pauseTimer}
-                    className="group flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#febc2e] to-[#f59e0b] text-black font-bold uppercase tracking-wider text-sm transition-all duration-200 hover:shadow-[0_0_30px_rgba(254,188,46,0.5)] hover:scale-105"
-                  >
-                    <Pause className="w-5 h-5 transition-transform group-hover:scale-110" />
-                    Pause
-                  </button>
-                )}
-
-                {/* Stop Button */}
-                {(timerState === "running" || timerState === "paused") && (
-                  <button
-                    onClick={stopTimer}
-                    className="group flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#28c840] to-[#22c55e] text-white font-bold uppercase tracking-wider text-sm transition-all duration-200 hover:shadow-[0_0_30px_rgba(40,200,64,0.5)] hover:scale-105"
-                  >
-                    <Square className="w-5 h-5 transition-transform group-hover:scale-110" />
-                    Stop
-                  </button>
-                )}
-
-                {/* Reset Button */}
-                {timerState === "stopped" && (
+              {/* Reset Button - Only show when timer has been used */}
+              {(timerState === "stopped" || timerState === "paused" || timerSeconds > 0) && (
+                <div className="flex items-center justify-center gap-4">
                   <button
                     onClick={resetTimer}
-                    className="group flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#3b82f6] to-[#2563eb] text-white font-bold uppercase tracking-wider text-sm transition-all duration-200 hover:shadow-[0_0_30px_rgba(59,130,246,0.5)] hover:scale-105"
+                    className="group flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1f2029] border border-white/10 text-gray-400 font-semibold text-xs transition-all duration-200 hover:bg-[#252630] hover:text-white hover:border-white/20"
                   >
-                    <RotateCcw className="w-5 h-5 transition-transform group-hover:rotate-[-45deg]" />
-                    Reset
+                    <RotateCcw className="w-4 h-4 transition-transform group-hover:rotate-[-45deg]" />
+                    Reset Timer
                   </button>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* Status Indicator */}
               <div className="flex items-center justify-center mt-4">
