@@ -375,26 +375,26 @@ export default function Home() {
         </div>
 
         {/* Main Grid */}
-        <div className="grid lg:grid-cols-12 gap-6">
+        <div className="grid lg:grid-cols-12 gap-4">
 
           {/* Form Section */}
           <div className="lg:col-span-7">
-            <div className="bg-[#13141c]/80 backdrop-blur-xl rounded-xl border border-white/5 shadow-2xl p-5">
-              <div className="flex items-center justify-between mb-5 pb-3 border-b border-white/5">
-                <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
-                  <ConfigIcon className="w-4 h-4 text-[#7c4dff]" />
+            <div className="bg-[#13141c]/80 backdrop-blur-xl rounded-xl border border-white/5 shadow-2xl p-4">
+              <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/5">
+                <div className="flex items-center gap-2 text-xs font-medium text-gray-300">
+                  <ConfigIcon className="w-3.5 h-3.5 text-[#7c4dff]" />
                   <span>Task Details</span>
                 </div>
                 <button
                   onClick={clearForm}
-                  className="text-[10px] font-bold text-gray-500 hover:text-white transition-colors uppercase tracking-wider"
+                  className="text-[9px] font-bold text-gray-500 hover:text-white transition-colors uppercase tracking-wider"
                 >
                   Reset
                 </button>
               </div>
 
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
                   <InputField
                     label="Project"
                     placeholder="Urban Space"
@@ -416,7 +416,7 @@ export default function Home() {
                   onChange={(v) => updateField("task", v)}
                 />
 
-                <div className="p-4 rounded-lg bg-[#0a0b10]/50 border border-white/5 space-y-4">
+                <div className="p-3 rounded-lg bg-[#0a0b10]/50 border border-white/5 space-y-3">
                   {statusType === "START" && (
                     <>
                       <div className="grid grid-cols-2 gap-4 items-end">
@@ -541,17 +541,17 @@ export default function Home() {
                 <span className="text-[10px] font-mono text-gray-500 uppercase">Preview</span>
               </div>
 
-              <div className="flex-1 p-4">
-                <div className="font-mono text-xs leading-relaxed text-gray-300 whitespace-pre-wrap">
+              <div className="flex-1 p-3">
+                <div className="font-mono text-[13px] leading-relaxed text-gray-300 whitespace-pre-wrap">
                   {generateOutput().replace(/```/g, "")}
                 </div>
               </div>
 
-              <div className="p-4 border-t border-white/5 bg-[#13141c]/50 rounded-b-xl">
+              <div className="p-3 border-t border-white/5 bg-[#13141c]/50 rounded-b-xl">
                 <button
                   onClick={copyToClipboard}
                   className={`
-                    w-full py-2.5 px-4 rounded-lg text-xs font-bold uppercase tracking-wide transition-all duration-200
+                    w-full py-2 px-3 rounded-lg text-xs font-bold uppercase tracking-wide transition-all duration-200
                     flex items-center justify-center gap-2
                     ${copied
                       ? "bg-[#28c840] text-white shadow-[0_0_15px_rgba(40,200,64,0.4)]"
