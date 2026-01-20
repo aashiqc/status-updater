@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type { Route } from "./+types/home";
 import {
   Play,
@@ -9,7 +9,11 @@ import {
   Activity,
   Clock,
   Link as LinkIcon,
-  FileText
+  FileText,
+  User,
+  Users,
+  RotateCcw,
+  Timer
 } from "lucide-react";
 
 export function meta({ }: Route.MetaArgs) {
@@ -20,13 +24,16 @@ export function meta({ }: Route.MetaArgs) {
 }
 
 type StatusType = "START" | "PAUSE" | "STOP";
+type UserType = "dev" | "qa";
+type TimerState = "idle" | "running" | "paused" | "stopped";
 
 interface FormData {
   project: string;
   task: string;
   dev: string;
   // START fields
-  estimatedTime: string;
+  estimatedHours: string;
+  estimatedMinutes: string;
   reference: string;
   // PAUSE fields
   pauseStatus: string;
@@ -34,7 +41,9 @@ interface FormData {
   progress: string;
   // STOP fields
   stopStatus: string;
-  timeTaken: string;
+  customStopStatus: string;
+  timeTakenHours: string;
+  timeTakenMinutes: string;
   notes: string;
 }
 
@@ -42,13 +51,16 @@ const initialFormData: FormData = {
   project: "",
   task: "",
   dev: "",
-  estimatedTime: "",
+  estimatedHours: "",
+  estimatedMinutes: "",
   reference: "",
   pauseStatus: "In Progress",
   pauseReason: "",
   progress: "",
   stopStatus: "Moved to QA",
-  timeTaken: "",
+  customStopStatus: "",
+  timeTakenHours: "",
+  timeTakenMinutes: "",
   notes: "",
 };
 
@@ -71,6 +83,108 @@ export default function Home() {
   const [statusType, setStatusType] = useState<StatusType>("START");
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [copied, setCopied] = useState(false);
+  const [userType, setUserType] = useState<UserType>("dev");
+
+  // Timer state
+  const [timerState, setTimerState] = useState<TimerState>("idle");
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const [finalTime, setFinalTime] = useState<string | null>(null);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Timer cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+    };
+  }, []);
+
+  // Format seconds to HH:MM:SS
+  const formatTime = useCallback((totalSeconds: number): string => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+  }, []);
+
+  // Timer controls
+  const startTimer = useCallback(() => {
+    if (timerState === "idle" || timerState === "stopped") {
+      setTimerSeconds(0);
+      setFinalTime(null);
+    }
+    setTimerState("running");
+    timerIntervalRef.current = setInterval(() => {
+      setTimerSeconds((prev) => prev + 1);
+    }, 1000);
+  }, [timerState]);
+
+  const pauseTimer = useCallback(() => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+    setTimerState("paused");
+  }, []);
+
+  const stopTimer = useCallback(() => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+    const timeString = formatTime(timerSeconds);
+    setFinalTime(timeString);
+    setTimerState("stopped");
+
+    // Auto-fill the timeTaken fields with the stopped time
+    const hours = Math.floor(timerSeconds / 3600);
+    const minutes = Math.floor((timerSeconds % 3600) / 60);
+    setFormData((prev) => ({
+      ...prev,
+      timeTakenHours: hours.toString(),
+      timeTakenMinutes: minutes.toString(),
+    }));
+  }, [timerSeconds, formatTime]);
+
+  const resetTimer = useCallback(() => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+    setTimerSeconds(0);
+    setFinalTime(null);
+    setTimerState("idle");
+  }, []);
+
+  // Format seconds to human-readable format (e.g., "2h 30m" or "45m")
+  const formatTimeHuman = (totalSeconds: number): string => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
+    if (hours > 0) return `${hours}h`;
+    if (minutes > 0) return `${minutes}m`;
+    return `${totalSeconds}s`;
+  };
+
+  // Format hours and minutes to decimal hours (e.g., "2.5h")
+  const formatDecimalHours = (hours: string, minutes: string, prefix: string = "~", fallback: string = "<approx time spent>"): string => {
+    const h = parseInt(hours) || 0;
+    const m = parseInt(minutes) || 0;
+    if (h === 0 && m === 0) return fallback;
+    const decimalHours = h + m / 60;
+    // Round to 1 decimal place, but only show decimal if needed
+    const rounded = Math.round(decimalHours * 10) / 10;
+    return `${prefix}${rounded}h`;
+  };
+
+  // Get the stop status (custom or predefined)
+  const getStopStatus = (): string => {
+    if (formData.stopStatus === "Custom") {
+      return formData.customStopStatus || "<custom status>";
+    }
+    return formData.stopStatus;
+  };
 
   const updateField = useCallback((field: keyof FormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -83,28 +197,27 @@ export default function Home() {
     output += `Task: ${formData.task || "<short description>"}\n`;
 
     if (statusType === "START") {
-      output += `Estimated Time: ${formData.estimatedTime || "<e.g. 30 mins / 2 hours>"}\n`;
+      const estimatedTime = formatDecimalHours(formData.estimatedHours, formData.estimatedMinutes, "~", "<e.g. 2h>");
+      output += `Estimated Time: ${estimatedTime}\n`;
       output += `Reference: ${formData.reference || "nil"}\n`;
     } else if (statusType === "PAUSE") {
       output += `Status: ${formData.pauseStatus}\n`;
       output += `Reason: ${formData.pauseReason || "<short reason>"}\n`;
       output += `Progress: ${formData.progress || "<what is done so far>"}\n`;
     } else {
-      // Ensure timeTaken starts with ~ if not present
-      let timeTaken = formData.timeTaken || "<approx time spent>";
-      if (formData.timeTaken && !timeTaken.startsWith("~")) {
-        timeTaken = `~${timeTaken}`;
-      }
+      // Format time taken as decimal hours
+      const timeTaken = formatDecimalHours(formData.timeTakenHours, formData.timeTakenMinutes);
 
-      output += `Status: ${formData.stopStatus}\n`;
+      output += `Status: ${getStopStatus()}\n`;
       output += `Time Taken: ${timeTaken}\n`;
       output += `Notes: ${formData.notes || "<build number>"}\n`;
     }
 
-    output += `Dev: ${formData.dev || "<your name>"}\n`;
+    const roleLabel = userType === "qa" ? "QA" : "Dev";
+    output += `${roleLabel}: ${formData.dev || "<your name>"}\n`;
     output += "```";
     return output;
-  }, [statusType, formData]);
+  }, [statusType, formData, userType]);
 
   const copyToClipboard = useCallback(async () => {
     try {
@@ -139,13 +252,6 @@ export default function Home() {
   const handleTabChange = (type: StatusType) => {
     setStatusType(type);
 
-    // Auto-fill timeTaken if switching to STOP and it's empty
-    if (type === "STOP" && !formData.timeTaken && formData.estimatedTime) {
-      setFormData(prev => ({
-        ...prev,
-        timeTaken: formData.estimatedTime.startsWith("~") ? formData.estimatedTime : `~${formData.estimatedTime}`
-      }));
-    }
   };
 
   const ConfigIcon = STATUS_CONFIG[statusType].icon;
@@ -168,6 +274,36 @@ export default function Home() {
               <Activity className="w-5 h-5 text-white" />
             </div>
             <h1 className="text-xl font-bold tracking-tight text-white">Status Generator</h1>
+
+            {/* User Type Toggle */}
+            <div className="flex bg-[#0a0b10] border border-white/10 rounded-lg p-0.5 ml-4">
+              <button
+                onClick={() => setUserType("dev")}
+                className={`
+                  flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all duration-200
+                  ${userType === "dev"
+                    ? "bg-gradient-to-r from-[#7c4dff] to-[#6b3fd4] text-white shadow-sm"
+                    : "text-gray-500 hover:text-gray-300"
+                  }
+                `}
+              >
+                <User className="w-3 h-3" />
+                Dev
+              </button>
+              <button
+                onClick={() => setUserType("qa")}
+                className={`
+                  flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all duration-200
+                  ${userType === "qa"
+                    ? "bg-gradient-to-r from-[#3b82f6] to-[#2563eb] text-white shadow-sm"
+                    : "text-gray-500 hover:text-gray-300"
+                  }
+                `}
+              >
+                <Users className="w-3 h-3" />
+                QA
+              </button>
+            </div>
           </div>
 
           <div className="flex bg-[#13141c] border border-white/5 rounded-lg p-1 shadow-inner">
@@ -223,7 +359,7 @@ export default function Home() {
                     onChange={(v) => updateField("project", v)}
                   />
                   <InputField
-                    label="Dev Name"
+                    label={userType === "qa" ? "QA Name" : "Dev Name"}
                     placeholder="Akash"
                     value={formData.dev}
                     onChange={(v) => updateField("dev", v)}
@@ -240,14 +376,26 @@ export default function Home() {
                 <div className="p-4 rounded-lg bg-[#0a0b10]/50 border border-white/5 space-y-4">
                   {statusType === "START" && (
                     <>
-                      <div className="grid grid-cols-2 gap-4">
-                        <InputField
-                          label="Time"
-                          placeholder="2 hours"
-                          value={formData.estimatedTime}
-                          onChange={(v) => updateField("estimatedTime", v)}
-                          icon={<Clock className="w-3.5 h-3.5" />}
-                        />
+                      <div className="grid grid-cols-2 gap-4 items-end">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-0.5">
+                            Estimated Time
+                          </label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <InputField
+                              label="Hours"
+                              placeholder="2"
+                              value={formData.estimatedHours}
+                              onChange={(v) => updateField("estimatedHours", v.replace(/\D/g, ''))}
+                            />
+                            <InputField
+                              label="Mins"
+                              placeholder="30"
+                              value={formData.estimatedMinutes}
+                              onChange={(v) => updateField("estimatedMinutes", v.replace(/\D/g, ''))}
+                            />
+                          </div>
+                        </div>
                         <InputField
                           label="Reference"
                           placeholder="Figma / Jira"
@@ -286,19 +434,44 @@ export default function Home() {
 
                   {statusType === "STOP" && (
                     <>
-                      <div className="grid grid-cols-2 gap-4">
-                        <SelectField
-                          label="Status"
-                          value={formData.stopStatus}
-                          onChange={(v) => updateField("stopStatus", v)}
-                          options={["Done", "Moved to QA", "Dropped", "Re-scoped"]}
-                        />
-                        <InputField
-                          label="Time Taken"
-                          placeholder="~3 hours"
-                          value={formData.timeTaken}
-                          onChange={(v) => updateField("timeTaken", v)}
-                        />
+                      <div className="grid grid-cols-2 gap-4 items-end">
+                        <div>
+                          <SelectField
+                            label="Status"
+                            value={formData.stopStatus}
+                            onChange={(v) => updateField("stopStatus", v)}
+                            options={["Done", "Moved to QA", "Dropped", "Re-scoped", "Custom"]}
+                          />
+                          {formData.stopStatus === "Custom" && (
+                            <div className="mt-2">
+                              <InputField
+                                label="Custom Status"
+                                placeholder="Enter custom status..."
+                                value={formData.customStopStatus}
+                                onChange={(v) => updateField("customStopStatus", v)}
+                              />
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-0.5">
+                            Time Taken
+                          </label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <InputField
+                              label="Hours"
+                              placeholder="2"
+                              value={formData.timeTakenHours}
+                              onChange={(v) => updateField("timeTakenHours", v.replace(/\D/g, ''))}
+                            />
+                            <InputField
+                              label="Mins"
+                              placeholder="30"
+                              value={formData.timeTakenMinutes}
+                              onChange={(v) => updateField("timeTakenMinutes", v.replace(/\D/g, ''))}
+                            />
+                          </div>
+                        </div>
                       </div>
                       <TextAreaField
                         label="Notes"
@@ -355,6 +528,136 @@ export default function Home() {
                     </>
                   )}
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Futuristic Timer Section */}
+        <div className="mt-8">
+          <div className="bg-[#0a0b10]/90 backdrop-blur-xl rounded-2xl border border-white/5 shadow-2xl p-6 relative overflow-hidden">
+            {/* Glowing background effects */}
+            <div className="absolute inset-0 pointer-events-none">
+              <div
+                className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full blur-[80px] transition-all duration-500 ${timerState === "running"
+                  ? "bg-[#7c4dff] opacity-30 animate-pulse"
+                  : timerState === "paused"
+                    ? "bg-[#febc2e] opacity-20"
+                    : timerState === "stopped"
+                      ? "bg-[#28c840] opacity-25"
+                      : "bg-[#3b82f6] opacity-10"
+                  }`}
+              />
+            </div>
+
+            <div className="relative z-10">
+              {/* Timer Header */}
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <Timer className="w-5 h-5 text-[#7c4dff]" />
+                <span className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Task Timer</span>
+              </div>
+
+              {/* Timer Display */}
+              <div className="flex items-center justify-center mb-6">
+                <div
+                  className={`
+                    font-mono text-6xl md:text-7xl lg:text-8xl font-bold tracking-wider
+                    bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent
+                    transition-all duration-300
+                    ${timerState === "running" ? "animate-pulse" : ""}
+                    ${timerState === "stopped" ? "from-[#28c840] via-[#4ade80] to-[#86efac]" : ""}
+                  `}
+                  style={{
+                    textShadow: timerState === "running"
+                      ? "0 0 40px rgba(124, 77, 255, 0.5)"
+                      : timerState === "stopped"
+                        ? "0 0 40px rgba(40, 200, 64, 0.5)"
+                        : "none",
+                  }}
+                >
+                  {formatTime(timerSeconds)}
+                </div>
+              </div>
+
+              {/* Final Time Display (when stopped) */}
+              {timerState === "stopped" && finalTime && (
+                <div className="text-center mb-4">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#28c840]/10 border border-[#28c840]/30">
+                    <Check className="w-4 h-4 text-[#28c840]" />
+                    <span className="text-sm font-semibold text-[#28c840]">
+                      Time Taken: {finalTime} • {formatDecimalHours(formData.timeTakenHours, formData.timeTakenMinutes).replace('~', '')}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Timer Controls */}
+              <div className="flex items-center justify-center gap-4">
+                {/* Start Button */}
+                {(timerState === "idle" || timerState === "paused") && (
+                  <button
+                    onClick={startTimer}
+                    className="group flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#7c4dff] to-[#6b3fd4] text-white font-bold uppercase tracking-wider text-sm transition-all duration-200 hover:shadow-[0_0_30px_rgba(124,77,255,0.5)] hover:scale-105"
+                  >
+                    <Play className="w-5 h-5 transition-transform group-hover:scale-110" />
+                    {timerState === "paused" ? "Resume" : "Start"}
+                  </button>
+                )}
+
+                {/* Pause Button */}
+                {timerState === "running" && (
+                  <button
+                    onClick={pauseTimer}
+                    className="group flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#febc2e] to-[#f59e0b] text-black font-bold uppercase tracking-wider text-sm transition-all duration-200 hover:shadow-[0_0_30px_rgba(254,188,46,0.5)] hover:scale-105"
+                  >
+                    <Pause className="w-5 h-5 transition-transform group-hover:scale-110" />
+                    Pause
+                  </button>
+                )}
+
+                {/* Stop Button */}
+                {(timerState === "running" || timerState === "paused") && (
+                  <button
+                    onClick={stopTimer}
+                    className="group flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#28c840] to-[#22c55e] text-white font-bold uppercase tracking-wider text-sm transition-all duration-200 hover:shadow-[0_0_30px_rgba(40,200,64,0.5)] hover:scale-105"
+                  >
+                    <Square className="w-5 h-5 transition-transform group-hover:scale-110" />
+                    Stop
+                  </button>
+                )}
+
+                {/* Reset Button */}
+                {timerState === "stopped" && (
+                  <button
+                    onClick={resetTimer}
+                    className="group flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#3b82f6] to-[#2563eb] text-white font-bold uppercase tracking-wider text-sm transition-all duration-200 hover:shadow-[0_0_30px_rgba(59,130,246,0.5)] hover:scale-105"
+                  >
+                    <RotateCcw className="w-5 h-5 transition-transform group-hover:rotate-[-45deg]" />
+                    Reset
+                  </button>
+                )}
+              </div>
+
+              {/* Status Indicator */}
+              <div className="flex items-center justify-center mt-4">
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`w-2 h-2 rounded-full transition-all duration-300 ${timerState === "running"
+                      ? "bg-[#7c4dff] animate-pulse shadow-[0_0_10px_rgba(124,77,255,0.8)]"
+                      : timerState === "paused"
+                        ? "bg-[#febc2e] shadow-[0_0_10px_rgba(254,188,46,0.8)]"
+                        : timerState === "stopped"
+                          ? "bg-[#28c840] shadow-[0_0_10px_rgba(40,200,64,0.8)]"
+                          : "bg-gray-600"
+                      }`}
+                  />
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    {timerState === "idle" && "Ready"}
+                    {timerState === "running" && "Running"}
+                    {timerState === "paused" && "Paused"}
+                    {timerState === "stopped" && "Completed"}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -428,7 +731,7 @@ function TextAreaField({
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        rows={3}
+        rows={2}
         className="w-full bg-[#0a0b10] border border-white/10 rounded-lg px-3 py-2
                    text-sm text-gray-300 placeholder-gray-700 resize-none
                    focus:outline-none focus:border-[#7c4dff]/50 focus:bg-[#0f1016] focus:ring-1 focus:ring-[#7c4dff]/20
