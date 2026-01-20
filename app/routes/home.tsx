@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback } from "react";
 import type { Route } from "./+types/home";
 import {
   Play,
@@ -7,13 +7,9 @@ import {
   Copy,
   Check,
   Activity,
-  Clock,
-  Link as LinkIcon,
-  FileText,
   User,
   Users,
-  RotateCcw,
-  Timer
+  Link as LinkIcon
 } from "lucide-react";
 
 export function meta({ }: Route.MetaArgs) {
@@ -25,7 +21,6 @@ export function meta({ }: Route.MetaArgs) {
 
 type StatusType = "START" | "PAUSE" | "STOP";
 type UserType = "dev" | "qa";
-type TimerState = "idle" | "running" | "paused" | "stopped";
 
 interface FormData {
   project: string;
@@ -85,87 +80,7 @@ export default function Home() {
   const [copied, setCopied] = useState(false);
   const [userType, setUserType] = useState<UserType>("dev");
 
-  // Timer state
-  const [timerState, setTimerState] = useState<TimerState>("idle");
-  const [timerSeconds, setTimerSeconds] = useState(0);
-  const [finalTime, setFinalTime] = useState<string | null>(null);
-  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Timer cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-      }
-    };
-  }, []);
-
-  // Format seconds to HH:MM:SS
-  const formatTime = useCallback((totalSeconds: number): string => {
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-  }, []);
-
-  // Timer controls
-  const startTimer = useCallback(() => {
-    if (timerState === "idle" || timerState === "stopped") {
-      setTimerSeconds(0);
-      setFinalTime(null);
-    }
-    setTimerState("running");
-    timerIntervalRef.current = setInterval(() => {
-      setTimerSeconds((prev) => prev + 1);
-    }, 1000);
-  }, [timerState]);
-
-  const pauseTimer = useCallback(() => {
-    if (timerIntervalRef.current) {
-      clearInterval(timerIntervalRef.current);
-      timerIntervalRef.current = null;
-    }
-    setTimerState("paused");
-  }, []);
-
-  const stopTimer = useCallback(() => {
-    if (timerIntervalRef.current) {
-      clearInterval(timerIntervalRef.current);
-      timerIntervalRef.current = null;
-    }
-    const timeString = formatTime(timerSeconds);
-    setFinalTime(timeString);
-    setTimerState("stopped");
-
-    // Auto-fill the timeTaken fields with the stopped time
-    const hours = Math.floor(timerSeconds / 3600);
-    const minutes = Math.floor((timerSeconds % 3600) / 60);
-    setFormData((prev) => ({
-      ...prev,
-      timeTakenHours: hours.toString(),
-      timeTakenMinutes: minutes.toString(),
-    }));
-  }, [timerSeconds, formatTime]);
-
-  const resetTimer = useCallback(() => {
-    if (timerIntervalRef.current) {
-      clearInterval(timerIntervalRef.current);
-      timerIntervalRef.current = null;
-    }
-    setTimerSeconds(0);
-    setFinalTime(null);
-    setTimerState("idle");
-  }, []);
-
-  // Format seconds to human-readable format (e.g., "2h 30m" or "45m")
-  const formatTimeHuman = (totalSeconds: number): string => {
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
-    if (hours > 0) return `${hours}h`;
-    if (minutes > 0) return `${minutes}m`;
-    return `${totalSeconds}s`;
-  };
 
   // Format hours and minutes to decimal hours (e.g., "2.5h")
   const formatDecimalHours = (hours: string, minutes: string, prefix: string = "~", fallback: string = "<approx time spent>"): string => {
@@ -251,50 +166,6 @@ export default function Home() {
 
   const handleTabChange = (type: StatusType) => {
     setStatusType(type);
-
-    // Integrate timer controls with tab changes
-    if (type === "START") {
-      // Reset and start the timer
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-      }
-      setTimerSeconds(0);
-      setFinalTime(null);
-      setTimerState("running");
-      timerIntervalRef.current = setInterval(() => {
-        setTimerSeconds((prev) => prev + 1);
-      }, 1000);
-    } else if (type === "PAUSE") {
-      // Pause the timer if it's running
-      if (timerState === "running") {
-        if (timerIntervalRef.current) {
-          clearInterval(timerIntervalRef.current);
-          timerIntervalRef.current = null;
-        }
-        setTimerState("paused");
-      }
-    } else if (type === "STOP") {
-      // Stop the timer and auto-fill time taken fields
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-        timerIntervalRef.current = null;
-      }
-
-      const timeString = formatTime(timerSeconds);
-      setFinalTime(timeString);
-      setTimerState("stopped");
-
-      // Auto-fill the time taken fields (only if timer was used)
-      if (timerSeconds > 0) {
-        const hours = Math.floor(timerSeconds / 3600);
-        const minutes = Math.floor((timerSeconds % 3600) / 60);
-        setFormData((prev) => ({
-          ...prev,
-          timeTakenHours: hours.toString(),
-          timeTakenMinutes: minutes.toString(),
-        }));
-      }
-    }
   };
 
   const ConfigIcon = STATUS_CONFIG[statusType].icon;
@@ -576,101 +447,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Futuristic Timer Section */}
-        <div className="mt-8">
-          <div className="bg-[#0a0b10]/90 backdrop-blur-xl rounded-2xl border border-white/5 shadow-2xl p-6 relative overflow-hidden">
-            {/* Glowing background effects */}
-            <div className="absolute inset-0 pointer-events-none">
-              <div
-                className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full blur-[80px] transition-all duration-500 ${timerState === "running"
-                  ? "bg-[#7c4dff] opacity-30 animate-pulse"
-                  : timerState === "paused"
-                    ? "bg-[#febc2e] opacity-20"
-                    : timerState === "stopped"
-                      ? "bg-[#28c840] opacity-25"
-                      : "bg-[#3b82f6] opacity-10"
-                  }`}
-              />
-            </div>
-
-            <div className="relative z-10">
-              {/* Timer Header */}
-              <div className="flex items-center justify-center gap-2 mb-4">
-                <Timer className="w-5 h-5 text-[#7c4dff]" />
-                <span className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Task Timer</span>
-              </div>
-
-              {/* Timer Display */}
-              <div className="flex items-center justify-center mb-6">
-                <div
-                  className={`
-                    font-mono text-6xl md:text-7xl lg:text-8xl font-bold tracking-wider
-                    bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent
-                    transition-all duration-300
-                    ${timerState === "running" ? "animate-pulse" : ""}
-                    ${timerState === "stopped" ? "from-[#28c840] via-[#4ade80] to-[#86efac]" : ""}
-                  `}
-                  style={{
-                    textShadow: timerState === "running"
-                      ? "0 0 40px rgba(124, 77, 255, 0.5)"
-                      : timerState === "stopped"
-                        ? "0 0 40px rgba(40, 200, 64, 0.5)"
-                        : "none",
-                  }}
-                >
-                  {formatTime(timerSeconds)}
-                </div>
-              </div>
-
-              {/* Final Time Display (when stopped) */}
-              {timerState === "stopped" && finalTime && (
-                <div className="text-center mb-4">
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#28c840]/10 border border-[#28c840]/30">
-                    <Check className="w-4 h-4 text-[#28c840]" />
-                    <span className="text-sm font-semibold text-[#28c840]">
-                      Time Taken: {finalTime} • {formatDecimalHours(formData.timeTakenHours, formData.timeTakenMinutes).replace('~', '')}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* Reset Button - Only show when timer has been used */}
-              {(timerState === "stopped" || timerState === "paused" || timerSeconds > 0) && (
-                <div className="flex items-center justify-center gap-4">
-                  <button
-                    onClick={resetTimer}
-                    className="group flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1f2029] border border-white/10 text-gray-400 font-semibold text-xs transition-all duration-200 hover:bg-[#252630] hover:text-white hover:border-white/20"
-                  >
-                    <RotateCcw className="w-4 h-4 transition-transform group-hover:rotate-[-45deg]" />
-                    Reset Timer
-                  </button>
-                </div>
-              )}
-
-              {/* Status Indicator */}
-              <div className="flex items-center justify-center mt-4">
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`w-2 h-2 rounded-full transition-all duration-300 ${timerState === "running"
-                      ? "bg-[#7c4dff] animate-pulse shadow-[0_0_10px_rgba(124,77,255,0.8)]"
-                      : timerState === "paused"
-                        ? "bg-[#febc2e] shadow-[0_0_10px_rgba(254,188,46,0.8)]"
-                        : timerState === "stopped"
-                          ? "bg-[#28c840] shadow-[0_0_10px_rgba(40,200,64,0.8)]"
-                          : "bg-gray-600"
-                      }`}
-                  />
-                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    {timerState === "idle" && "Ready"}
-                    {timerState === "running" && "Running"}
-                    {timerState === "paused" && "Paused"}
-                    {timerState === "stopped" && "Completed"}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
