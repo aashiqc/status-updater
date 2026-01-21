@@ -574,6 +574,60 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        {/* Changelog Section */}
+        <div className="mt-12 border-t border-white/5 pt-8">
+          <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-6">What's New</h2>
+          <div className="grid gap-6">
+            {[
+              {
+                version: "v1.2",
+                date: "Jan 21, 2026",
+                changes: [
+                  "Added 'Paste' feature to auto-fill fields from previous status text",
+                  "Smart parsing for Project, Task, Dev/QA, and Time fields"
+                ]
+              },
+              {
+                version: "v1.1",
+                date: "Jan 21, 2026",
+                changes: [
+                  "Added real-time timestamp capture",
+                  "Added toggle to show/hide time in output",
+                  "Editable time field with premium UI"
+                ]
+              },
+              {
+                version: "v1.0",
+                date: "Jan 20, 2026",
+                changes: [
+                  "Initial release of Status Generator",
+                  "Support for START, PAUSE, and STOP status types",
+                  "Dev and QA roles support"
+                ]
+              }
+            ].slice(0, 1).map((log, index) => (
+              <div key={index} className="flex gap-4 group">
+                <div className="flex flex-col items-center">
+                  <div className="w-2 h-2 rounded-full bg-[#7c4dff] ring-4 ring-[#7c4dff]/10 group-hover:ring-[#7c4dff]/20 transition-all"></div>
+                </div>
+                <div>
+                  <div className="flex items-baseline gap-3 mb-1">
+                    <span className="text-sm font-bold text-white group-hover:text-[#7c4dff] transition-colors">{log.version}</span>
+                    <span className="text-xs text-gray-500 font-mono">{log.date}</span>
+                  </div>
+                  <ul className="space-y-1">
+                    {log.changes.map((change, i) => (
+                      <li key={i} className="text-xs text-gray-400 leading-relaxed">
+                        • {change}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Paste Modal */}
