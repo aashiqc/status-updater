@@ -9,7 +9,9 @@ import {
   Activity,
   User,
   Users,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Clock,
+  ClipboardPaste
 } from "lucide-react";
 
 export function meta({ }: Route.MetaArgs) {
@@ -74,11 +76,61 @@ const STATUS_CONFIG = {
   },
 };
 
+// Helper to format time as 12-hour format (e.g., "2:30PM")
+const formatTime12h = (date: Date): string => {
+  let hours = date.getHours();
+  const minutes = date.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12; // Handle midnight (0 -> 12)
+  const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+  return `${hours}:${minutesStr}${ampm}`;
+};
+
+// Parse pasted status text and extract fields
+const parseStatusText = (text: string): { project?: string; task?: string; dev?: string; time?: string; userType?: UserType } => {
+  const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
+  const result: { project?: string; task?: string; dev?: string; time?: string; userType?: UserType } = {};
+
+  for (const line of lines) {
+    // Extract time from first line (e.g., "START - 3:11PM")
+    const timeMatch = line.match(/^(START|PAUSE|STOP)\s*-\s*(.+)$/i);
+    if (timeMatch) {
+      result.time = timeMatch[2].trim();
+      continue;
+    }
+
+    // Match "Key: Value" patterns
+    const keyValueMatch = line.match(/^([^:]+):\s*(.+)$/);
+    if (keyValueMatch) {
+      const key = keyValueMatch[1].trim().toLowerCase();
+      const value = keyValueMatch[2].trim();
+
+      if (key === 'project') result.project = value;
+      else if (key === 'task') result.task = value;
+      else if (key === 'dev') {
+        result.dev = value;
+        result.userType = 'dev';
+      }
+      else if (key === 'qa') {
+        result.dev = value;
+        result.userType = 'qa';
+      }
+    }
+  }
+
+  return result;
+};
+
 export default function Home() {
   const [statusType, setStatusType] = useState<StatusType>("START");
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [copied, setCopied] = useState(false);
   const [userType, setUserType] = useState<UserType>("dev");
+  const [capturedTime, setCapturedTime] = useState<string>(formatTime12h(new Date()));
+  const [showTime, setShowTime] = useState<boolean>(false);
+  const [showPasteModal, setShowPasteModal] = useState(false);
+  const [pasteText, setPasteText] = useState("");
 
 
 
@@ -107,7 +159,7 @@ export default function Home() {
 
   const generateOutput = useCallback(() => {
     let output = "```\n";
-    output += `${statusType}\n`;
+    output += showTime ? `${statusType} - ${capturedTime}\n` : `${statusType}\n`;
     output += `Project: ${formData.project || "<brand name>"}\n`;
     output += `Task: ${formData.task || "<short description>"}\n`;
 
@@ -132,7 +184,7 @@ export default function Home() {
     output += `${roleLabel}: ${formData.dev || "<your name>"}\n`;
     output += "```";
     return output;
-  }, [statusType, formData, userType]);
+  }, [statusType, formData, userType, capturedTime, showTime]);
 
   const copyToClipboard = useCallback(async () => {
     try {
@@ -166,7 +218,29 @@ export default function Home() {
 
   const handleTabChange = (type: StatusType) => {
     setStatusType(type);
+    setCapturedTime(formatTime12h(new Date())); // Capture current time when switching tabs
   };
+
+  // Handle paste and auto-fill form fields
+  const handlePaste = useCallback(() => {
+    const parsed = parseStatusText(pasteText);
+
+    setFormData(prev => ({
+      ...prev,
+      project: parsed.project || prev.project,
+      task: parsed.task || prev.task,
+      dev: parsed.dev || prev.dev,
+    }));
+
+    if (parsed.userType) setUserType(parsed.userType);
+    if (parsed.time) {
+      setCapturedTime(parsed.time);
+      setShowTime(true);
+    }
+
+    setShowPasteModal(false);
+    setPasteText("");
+  }, [pasteText]);
 
   const ConfigIcon = STATUS_CONFIG[statusType].icon;
 
@@ -220,28 +294,72 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="flex bg-[#13141c] border border-white/5 rounded-lg p-1 shadow-inner">
-            {(Object.keys(STATUS_CONFIG) as StatusType[]).map((type) => {
-              const cfg = STATUS_CONFIG[type];
-              const isActive = statusType === type;
-              const Icon = cfg.icon;
-              return (
-                <button
-                  key={type}
-                  onClick={() => handleTabChange(type)}
+          <div className="flex items-center gap-3">
+            <div className="flex bg-[#13141c] border border-white/5 rounded-lg p-1 shadow-inner">
+              {(Object.keys(STATUS_CONFIG) as StatusType[]).map((type) => {
+                const cfg = STATUS_CONFIG[type];
+                const isActive = statusType === type;
+                const Icon = cfg.icon;
+                return (
+                  <button
+                    key={type}
+                    onClick={() => handleTabChange(type)}
+                    className={`
+                      flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-semibold transition-all duration-200
+                      ${isActive
+                        ? "bg-[#252630] text-white shadow-sm ring-1 ring-white/10"
+                        : "text-gray-400 hover:text-white hover:bg-[#1f2029]"
+                      }
+                    `}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{cfg.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {/* Time Field with Premium Toggle Switch */}
+            <div className={`
+              flex items-center gap-2.5 rounded-lg px-3 py-1.5 transition-all duration-300
+              ${showTime
+                ? "bg-gradient-to-r from-[#7c4dff]/20 to-[#3b82f6]/20 border border-[#7c4dff]/30 shadow-[0_0_15px_rgba(124,77,255,0.15)]"
+                : "bg-[#0a0b10] border border-white/10"
+              }
+            `}>
+              <Clock className={`w-3.5 h-3.5 transition-colors duration-300 ${showTime ? "text-[#7c4dff]" : "text-gray-500"}`} />
+              <input
+                type="text"
+                value={capturedTime}
+                onChange={(e) => setCapturedTime(e.target.value)}
+                placeholder="2:30PM"
+                className={`
+                  w-16 bg-transparent text-sm font-semibold focus:outline-none placeholder-gray-600 transition-colors duration-300
+                  ${showTime ? "text-white" : "text-gray-400"}
+                `}
+              />
+              {/* Premium Toggle Switch */}
+              <button
+                onClick={() => setShowTime(!showTime)}
+                className={`
+                  relative w-9 h-5 rounded-full transition-all duration-300 flex-shrink-0
+                  ${showTime
+                    ? "bg-gradient-to-r from-[#7c4dff] to-[#6366f1] shadow-[0_0_10px_rgba(124,77,255,0.4)]"
+                    : "bg-gray-700/80 hover:bg-gray-600/80"
+                  }
+                `}
+                title={showTime ? "Time will appear in output" : "Time hidden from output"}
+              >
+                <span
                   className={`
-                    flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-semibold transition-all duration-200
-                    ${isActive
-                      ? "bg-[#252630] text-white shadow-sm ring-1 ring-white/10"
-                      : "text-gray-400 hover:text-white hover:bg-[#1f2029]"
+                    absolute top-0.5 w-4 h-4 rounded-full shadow-md transition-all duration-300 ease-out
+                    ${showTime
+                      ? "left-[18px] bg-white"
+                      : "left-0.5 bg-gray-400"
                     }
                   `}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  <span>{cfg.label}</span>
-                </button>
-              );
-            })}
+                />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -256,12 +374,22 @@ export default function Home() {
                   <ConfigIcon className="w-3.5 h-3.5 text-[#7c4dff]" />
                   <span>Task Details</span>
                 </div>
-                <button
-                  onClick={clearForm}
-                  className="text-[9px] font-bold text-gray-500 hover:text-white transition-colors uppercase tracking-wider"
-                >
-                  Reset
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowPasteModal(true)}
+                    className="flex items-center gap-1 text-[9px] font-bold text-[#7c4dff] hover:text-white transition-colors uppercase tracking-wider"
+                  >
+                    <ClipboardPaste className="w-3 h-3" />
+                    Paste
+                  </button>
+                  <span className="text-gray-600">|</span>
+                  <button
+                    onClick={clearForm}
+                    className="text-[9px] font-bold text-gray-500 hover:text-white transition-colors uppercase tracking-wider"
+                  >
+                    Reset
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-3">
@@ -446,8 +574,70 @@ export default function Home() {
             </div>
           </div>
         </div>
-
       </div>
+
+      {/* Paste Modal */}
+      {showPasteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowPasteModal(false)}
+          />
+          <div className="relative bg-[#13141c] border border-white/10 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ClipboardPaste className="w-4 h-4 text-[#7c4dff]" />
+                <span className="text-sm font-semibold text-white">Paste Previous Status</span>
+              </div>
+              <button
+                onClick={() => setShowPasteModal(false)}
+                className="text-gray-500 hover:text-white transition-colors text-lg leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-4">
+              <textarea
+                value={pasteText}
+                onChange={(e) => setPasteText(e.target.value)}
+                placeholder={`Paste your previous status here...\n\nExample:\nSTART - 3:11PM\nProject: Urban Space\nTask: PDP - Size Variant issue\nDev: Ashiq`}
+                className="w-full h-40 bg-[#0a0b10] border border-white/10 rounded-lg px-3 py-2.5
+                           text-sm text-gray-300 placeholder-gray-600 resize-none font-mono
+                           focus:outline-none focus:border-[#7c4dff]/50 focus:ring-1 focus:ring-[#7c4dff]/20
+                           transition-all duration-150"
+                autoFocus
+              />
+              <p className="text-[10px] text-gray-500 mt-2">
+                Extracts: Project, Task, Dev/QA name, and Time (if present)
+              </p>
+            </div>
+            <div className="px-4 py-3 border-t border-white/5 flex items-center justify-end gap-2 bg-[#0a0b10]/50">
+              <button
+                onClick={() => {
+                  setShowPasteModal(false);
+                  setPasteText("");
+                }}
+                className="px-3 py-1.5 text-xs font-semibold text-gray-400 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePaste}
+                disabled={!pasteText.trim()}
+                className={`
+                  px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
+                  ${pasteText.trim()
+                    ? "bg-gradient-to-r from-[#7c4dff] to-[#6366f1] text-white hover:shadow-[0_0_15px_rgba(124,77,255,0.4)]"
+                    : "bg-gray-700 text-gray-500 cursor-not-allowed"
+                  }
+                `}
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
