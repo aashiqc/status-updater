@@ -131,18 +131,27 @@ export default function Home() {
   const [showTime, setShowTime] = useState<boolean>(false);
   const [showPasteModal, setShowPasteModal] = useState(false);
   const [pasteText, setPasteText] = useState("");
+  const [timeFormat, setTimeFormat] = useState<"decimal" | "hm">("decimal");
 
 
 
-  // Format hours and minutes to decimal hours (e.g., "2.5h")
-  const formatDecimalHours = (hours: string, minutes: string, prefix: string = "~", fallback: string = "<approx time spent>"): string => {
+  // Format hours and minutes based on selected format
+  const formatTime = (hours: string, minutes: string, prefix: string = "~", fallback: string = "<approx time spent>"): string => {
     const h = parseInt(hours) || 0;
     const m = parseInt(minutes) || 0;
     if (h === 0 && m === 0) return fallback;
-    const decimalHours = h + m / 60;
-    // Round to 1 decimal place, but only show decimal if needed
-    const rounded = Math.round(decimalHours * 10) / 10;
-    return `${prefix}${rounded}h`;
+
+    if (timeFormat === "hm") {
+      // Hours and minutes format (e.g., "2h 30min")
+      if (h > 0 && m > 0) return `${prefix}${h}h ${m}min`;
+      if (h > 0) return `${prefix}${h}h`;
+      return `${prefix}${m}min`;
+    } else {
+      // Decimal hours format (e.g., "~2.5h")
+      const decimalHours = h + m / 60;
+      const rounded = Math.round(decimalHours * 10) / 10;
+      return `${prefix}${rounded}h`;
+    }
   };
 
   // Get the stop status (custom or predefined)
@@ -164,7 +173,7 @@ export default function Home() {
     output += `Task: ${formData.task || "<short description>"}\n`;
 
     if (statusType === "START") {
-      const estimatedTime = formatDecimalHours(formData.estimatedHours, formData.estimatedMinutes, "~", "<e.g. 2h>");
+      const estimatedTime = formatTime(formData.estimatedHours, formData.estimatedMinutes, "~", "<e.g. 2h>");
       output += `Estimated Time: ${estimatedTime}\n`;
       output += `Reference: ${formData.reference || "nil"}\n`;
     } else if (statusType === "PAUSE") {
@@ -173,7 +182,7 @@ export default function Home() {
       output += `Progress: ${formData.progress || "<what is done so far>"}\n`;
     } else {
       // Format time taken as decimal hours
-      const timeTaken = formatDecimalHours(formData.timeTakenHours, formData.timeTakenMinutes);
+      const timeTaken = formatTime(formData.timeTakenHours, formData.timeTakenMinutes);
 
       output += `Status: ${getStopStatus()}\n`;
       output += `Time Taken: ${timeTaken}\n`;
@@ -184,7 +193,7 @@ export default function Home() {
     output += `${roleLabel}: ${formData.dev || "<your name>"}\n`;
     output += "```";
     return output;
-  }, [statusType, formData, userType, capturedTime, showTime]);
+  }, [statusType, formData, userType, capturedTime, showTime, timeFormat]);
 
   const copyToClipboard = useCallback(async () => {
     try {
@@ -381,6 +390,18 @@ export default function Home() {
                   >
                     <ClipboardPaste className="w-3 h-3" />
                     Paste
+                  </button>
+                  <span className="text-gray-600">|</span>
+                  {/* Time Format Toggle */}
+                  <button
+                    onClick={() => setTimeFormat(timeFormat === "decimal" ? "hm" : "decimal")}
+                    className={`
+                      text-[9px] font-bold uppercase tracking-wider transition-colors
+                      ${timeFormat === "hm" ? "text-[#7c4dff]" : "text-gray-500 hover:text-white"}
+                    `}
+                    title={timeFormat === "decimal" ? "Switch to hours + minutes format" : "Switch to decimal hours format"}
+                  >
+                    {timeFormat === "decimal" ? "~2.5h" : "2h 30min"}
                   </button>
                   <span className="text-gray-600">|</span>
                   <button
@@ -581,11 +602,11 @@ export default function Home() {
           <div className="grid gap-6">
             {[
               {
-                version: "v1.2",
+                version: "v1.3",
                 date: "Jan 21, 2026",
                 changes: [
-                  "Added 'Paste' feature to auto-fill fields from previous status text",
-                  "Smart parsing for Project, Task, Dev/QA, and Time fields"
+                  "Added time format toggle: switch between ~2.5h and 2h 30min formats",
+                  "Format applies to both Estimated Time and Time Taken fields"
                 ]
               },
               {
