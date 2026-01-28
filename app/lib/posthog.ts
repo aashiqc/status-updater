@@ -11,8 +11,8 @@ if (typeof window !== 'undefined') {
             person_profiles: 'identified_only',
             // Enable automatic capturing
             autocapture: true,
-            // Capture page views automatically
-            capture_pageview: true,
+            // Disable automatic page views - we handle this manually in RouteChangeTracker for SPA
+            capture_pageview: false,
             // Capture page leave events
             capture_pageleave: true,
             // Capture performance metrics
