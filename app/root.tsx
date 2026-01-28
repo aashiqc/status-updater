@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   isRouteErrorResponse,
   Links,
@@ -5,9 +6,12 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLocation,
 } from "react-router";
 
 import type { Route } from "./+types/root";
+import { PostHogProvider, usePostHog } from '@posthog/react';
+import { posthog } from "./lib/posthog";
 import "./app.css";
 
 export const meta: Route.MetaFunction = () => {
@@ -43,7 +47,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        {children}
+        <PostHogProvider client={posthog}>
+          {children}
+        </PostHogProvider>
         <ScrollRestoration />
         <Scripts />
       </body>
@@ -52,7 +58,31 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  return <Outlet />;
+  return (
+    <>
+      <RouteChangeTracker />
+      <Outlet />
+    </>
+  );
+}
+
+// Component to track route changes for PostHog
+function RouteChangeTracker() {
+  const location = useLocation();
+  const posthogClient = usePostHog();
+
+  useEffect(() => {
+    // Track page view on route change
+    if (posthogClient) {
+      posthogClient.capture('$pageview', {
+        $current_url: window.location.href,
+        path: location.pathname,
+        search: location.search,
+      });
+    }
+  }, [location, posthogClient]);
+
+  return null;
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {

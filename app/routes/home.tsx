@@ -13,6 +13,7 @@ import {
   Clock,
   ClipboardPaste
 } from "lucide-react";
+import { usePostHog } from "@posthog/react";
 
 export function meta({ }: Route.MetaArgs) {
   return [
@@ -132,6 +133,7 @@ export default function Home() {
   const [showPasteModal, setShowPasteModal] = useState(false);
   const [pasteText, setPasteText] = useState("");
   const [timeFormat, setTimeFormat] = useState<"decimal" | "hm">("decimal");
+  const posthog = usePostHog();
 
 
 
@@ -197,6 +199,27 @@ export default function Home() {
 
   const copyToClipboard = useCallback(async () => {
     try {
+      // Track the copy event with comprehensive details
+      posthog?.capture('status_copied', {
+        status_type: statusType,
+        project: formData.project,
+        task: formData.task,
+        dev_name: formData.dev,
+        role: userType,
+        time_format: timeFormat,
+        show_time: showTime,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Update person properties if name is provided
+      if (formData.dev) {
+        posthog?.setPersonProperties({
+          name: formData.dev,
+          role: userType,
+          last_project: formData.project || undefined,
+        });
+      }
+
       const plainText = generateOutput();
       const htmlText = `<pre>${plainText.replace(/```/g, "").trim()}</pre>`;
 
@@ -219,13 +242,24 @@ export default function Home() {
         console.error("Fallback copy failed:", fallbackErr);
       }
     }
-  }, [generateOutput]);
+  }, [generateOutput, posthog, statusType, formData.project, formData.task, formData.dev, userType, timeFormat, showTime]);
 
   const clearForm = useCallback(() => {
+    // Track form reset event
+    posthog?.capture('form_reset', {
+      status_type: statusType,
+      had_project: !!formData.project,
+      had_task: !!formData.task,
+    });
     setFormData(initialFormData);
-  }, []);
+  }, [posthog, statusType, formData.project, formData.task]);
 
   const handleTabChange = (type: StatusType) => {
+    // Track status type change
+    posthog?.capture('status_type_changed', {
+      from_type: statusType,
+      to_type: type,
+    });
     setStatusType(type);
     setCapturedTime(formatTime12h(new Date())); // Capture current time when switching tabs
   };
@@ -233,6 +267,17 @@ export default function Home() {
   // Handle paste and auto-fill form fields
   const handlePaste = useCallback(() => {
     const parsed = parseStatusText(pasteText);
+
+    // Track paste event
+    posthog?.capture('status_pasted', {
+      parsed_fields: {
+        has_project: !!parsed.project,
+        has_task: !!parsed.task,
+        has_dev: !!parsed.dev,
+        has_time: !!parsed.time,
+        detected_user_type: parsed.userType,
+      },
+    });
 
     setFormData(prev => ({
       ...prev,
@@ -249,7 +294,18 @@ export default function Home() {
 
     setShowPasteModal(false);
     setPasteText("");
-  }, [pasteText]);
+  }, [pasteText, posthog]);
+
+  // Handle role switch with tracking
+  const handleRoleSwitch = useCallback((newRole: UserType) => {
+    if (newRole !== userType) {
+      posthog?.capture('role_switched', {
+        from_role: userType,
+        to_role: newRole,
+      });
+    }
+    setUserType(newRole);
+  }, [userType, posthog]);
 
   const ConfigIcon = STATUS_CONFIG[statusType].icon;
 
@@ -275,7 +331,7 @@ export default function Home() {
             {/* User Type Toggle */}
             <div className="flex bg-[#0a0b10] border border-white/10 rounded-lg p-0.5 ml-4">
               <button
-                onClick={() => setUserType("dev")}
+                onClick={() => handleRoleSwitch("dev")}
                 className={`
                   flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all duration-200
                   ${userType === "dev"
@@ -288,7 +344,7 @@ export default function Home() {
                 Dev
               </button>
               <button
-                onClick={() => setUserType("qa")}
+                onClick={() => handleRoleSwitch("qa")}
                 className={`
                   flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all duration-200
                   ${userType === "qa"
