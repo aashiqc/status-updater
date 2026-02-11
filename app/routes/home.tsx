@@ -11,7 +11,10 @@ import {
   Users,
   Link as LinkIcon,
   Clock,
-  ClipboardPaste
+  ClipboardPaste,
+  Calculator,
+  Trash2,
+  Plus
 } from "lucide-react";
 import { usePostHog } from "@posthog/react";
 
@@ -133,6 +136,12 @@ export default function Home() {
   const [showPasteModal, setShowPasteModal] = useState(false);
   const [pasteText, setPasteText] = useState("");
   const [timeFormat, setTimeFormat] = useState<"decimal" | "hm">("decimal");
+  const [showTimeCalc, setShowTimeCalc] = useState(false);
+  const [timeEntries, setTimeEntries] = useState<{ hours: string; minutes: string }[]>([
+    { hours: "", minutes: "" },
+    { hours: "", minutes: "" },
+  ]);
+  const [copiedCalcTotal, setCopiedCalcTotal] = useState(false);
   const posthog = usePostHog();
 
 
@@ -307,6 +316,61 @@ export default function Home() {
     setUserType(newRole);
   }, [userType, posthog]);
 
+  // Time Calculator helpers
+  const updateTimeEntry = useCallback((index: number, field: "hours" | "minutes", value: string) => {
+    setTimeEntries(prev => prev.map((entry, i) =>
+      i === index ? { ...entry, [field]: value } : entry
+    ));
+  }, []);
+
+  const addTimeEntry = useCallback(() => {
+    setTimeEntries(prev => [...prev, { hours: "", minutes: "" }]);
+  }, []);
+
+  const removeTimeEntry = useCallback((index: number) => {
+    setTimeEntries(prev => prev.length > 2 ? prev.filter((_, i) => i !== index) : prev);
+  }, []);
+
+  const calcTotal = useCallback(() => {
+    let totalMinutes = 0;
+    for (const entry of timeEntries) {
+      totalMinutes += (parseInt(entry.hours) || 0) * 60 + (parseInt(entry.minutes) || 0);
+    }
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    return { h, m, totalMinutes };
+  }, [timeEntries]);
+
+  const formatCalcTotal = useCallback(() => {
+    const { h, m } = calcTotal();
+    if (h === 0 && m === 0) return "0h 0min";
+    if (h > 0 && m > 0) return `${h}h ${m}min`;
+    if (h > 0) return `${h}h`;
+    return `${m}min`;
+  }, [calcTotal]);
+
+  const copyCalcTotal = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(formatCalcTotal());
+      setCopiedCalcTotal(true);
+      setTimeout(() => setCopiedCalcTotal(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy total:", err);
+    }
+  }, [formatCalcTotal]);
+
+  const applyCalcToForm = useCallback(() => {
+    const { h, m } = calcTotal();
+    const hStr = h > 0 ? String(h) : "";
+    const mStr = m > 0 ? String(m) : "";
+    if (statusType === "START") {
+      setFormData(prev => ({ ...prev, estimatedHours: hStr, estimatedMinutes: mStr }));
+    } else if (statusType === "STOP") {
+      setFormData(prev => ({ ...prev, timeTakenHours: hStr, timeTakenMinutes: mStr }));
+    }
+    setShowTimeCalc(false);
+  }, [calcTotal, statusType]);
+
   const ConfigIcon = STATUS_CONFIG[statusType].icon;
 
   return (
@@ -383,6 +447,15 @@ export default function Home() {
                 );
               })}
             </div>
+            {/* Time Calculator Button */}
+            <button
+              onClick={() => setShowTimeCalc(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0a0b10] border border-white/10 text-gray-400 hover:text-white hover:border-[#7c4dff]/40 transition-all duration-200 group"
+              title="Time Calculator"
+            >
+              <Calculator className="w-3.5 h-3.5 group-hover:text-[#7c4dff] transition-colors" />
+              <span className="text-xs font-semibold">Calc</span>
+            </button>
             {/* Time Field with Premium Toggle Switch */}
             <div className={`
               flex items-center gap-2.5 rounded-lg px-3 py-1.5 transition-all duration-300
@@ -658,6 +731,15 @@ export default function Home() {
           <div className="grid gap-6">
             {[
               {
+                version: "v1.4",
+                date: "Feb 11, 2026",
+                changes: [
+                  "Added Time Calculator: add multiple day entries and get the total",
+                  "Auto-labeled Day 1, Day 2, etc. for clean UX",
+                  "Copy total to clipboard or apply directly to form time fields"
+                ]
+              },
+              {
                 version: "v1.3",
                 date: "Jan 21, 2026",
                 changes: [
@@ -706,6 +788,146 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Time Calculator Modal */}
+      {showTimeCalc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowTimeCalc(false)}
+          />
+          <div className="relative bg-[#13141c] border border-white/10 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Calculator className="w-4 h-4 text-[#7c4dff]" />
+                <span className="text-sm font-semibold text-white">Time Calculator</span>
+              </div>
+              <button
+                onClick={() => setShowTimeCalc(false)}
+                className="text-gray-500 hover:text-white transition-colors text-lg leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-4 space-y-2.5">
+              {timeEntries.map((entry, index) => (
+                <div key={index} className="flex items-center gap-2.5 group/row">
+                  <span className="text-[11px] font-semibold text-gray-500 w-14 flex-shrink-0 tabular-nums">
+                    Day {index + 1}
+                  </span>
+                  <div className="flex items-center gap-1.5 flex-1">
+                    <input
+                      type="text"
+                      placeholder="0"
+                      value={entry.hours}
+                      onChange={(e) => updateTimeEntry(index, "hours", e.target.value.replace(/\D/g, ''))}
+                      className="w-full bg-[#0a0b10] border border-white/10 rounded-lg px-2.5 py-2 text-center
+                                 text-sm text-gray-300 placeholder-gray-700
+                                 focus:outline-none focus:border-[#7c4dff]/50 focus:ring-1 focus:ring-[#7c4dff]/20
+                                 transition-all duration-150"
+                    />
+                    <span className="text-[10px] font-bold text-gray-600 uppercase flex-shrink-0">h</span>
+                    <input
+                      type="text"
+                      placeholder="0"
+                      value={entry.minutes}
+                      onChange={(e) => updateTimeEntry(index, "minutes", e.target.value.replace(/\D/g, ''))}
+                      className="w-full bg-[#0a0b10] border border-white/10 rounded-lg px-2.5 py-2 text-center
+                                 text-sm text-gray-300 placeholder-gray-700
+                                 focus:outline-none focus:border-[#7c4dff]/50 focus:ring-1 focus:ring-[#7c4dff]/20
+                                 transition-all duration-150"
+                    />
+                    <span className="text-[10px] font-bold text-gray-600 uppercase flex-shrink-0">m</span>
+                  </div>
+                  <button
+                    onClick={() => removeTimeEntry(index)}
+                    disabled={timeEntries.length <= 2}
+                    className={`p-1.5 rounded-md transition-all duration-150 flex-shrink-0
+                      ${timeEntries.length > 2
+                        ? "text-gray-700 hover:text-red-400 hover:bg-red-400/10 opacity-0 group-hover/row:opacity-100"
+                        : "text-gray-800/0 cursor-default"
+                      }`}
+                    title={timeEntries.length > 2 ? "Remove entry" : undefined}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+
+              <button
+                onClick={addTimeEntry}
+                className="flex items-center gap-1.5 text-xs font-semibold text-[#7c4dff] hover:text-white transition-colors w-full justify-center py-2 rounded-lg border border-dashed border-white/10 hover:border-[#7c4dff]/30"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Day
+              </button>
+
+              {/* Total Display */}
+              <div className="bg-[#0a0b10] border border-[#7c4dff]/20 rounded-lg p-3 mt-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Total</span>
+                  <span className="text-lg font-bold text-white tracking-tight">{formatCalcTotal()}</span>
+                </div>
+              </div>
+            </div>
+            <div className="px-4 py-3 border-t border-white/5 flex items-center justify-between bg-[#0a0b10]/50">
+              <button
+                onClick={() => {
+                  setTimeEntries([{ hours: "", minutes: "" }, { hours: "", minutes: "" }]);
+                  setCopiedCalcTotal(false);
+                }}
+                className="text-[10px] font-bold text-gray-500 hover:text-white transition-colors uppercase tracking-wider"
+              >
+                Clear All
+              </button>
+              <div className="flex items-center gap-2">
+                {(statusType === "START" || statusType === "STOP") && (
+                  <button
+                    onClick={applyCalcToForm}
+                    disabled={calcTotal().totalMinutes === 0}
+                    className={`
+                      flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
+                      ${calcTotal().totalMinutes > 0
+                        ? "bg-[#252630] text-white ring-1 ring-white/10 hover:ring-[#7c4dff]/40 hover:bg-[#2d2e3d]"
+                        : "bg-[#1a1b24] text-gray-600 cursor-not-allowed"
+                      }
+                    `}
+                    title={statusType === "START" ? "Apply to Estimated Time" : "Apply to Time Taken"}
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                    {statusType === "START" ? "Apply to Est." : "Apply to Time"}
+                  </button>
+                )}
+                <button
+                  onClick={copyCalcTotal}
+                  disabled={calcTotal().totalMinutes === 0}
+                  className={`
+                    flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
+                    ${copiedCalcTotal
+                      ? "bg-[#28c840] text-white shadow-[0_0_15px_rgba(40,200,64,0.4)]"
+                      : calcTotal().totalMinutes > 0
+                        ? "bg-gradient-to-r from-[#7c4dff] to-[#6366f1] text-white hover:shadow-[0_0_15px_rgba(124,77,255,0.4)]"
+                        : "bg-gray-700 text-gray-500 cursor-not-allowed"
+                    }
+                  `}
+                >
+                  {copiedCalcTotal ? (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      Copy
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Paste Modal */}
       {showPasteModal && (
