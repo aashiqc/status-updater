@@ -1,0 +1,151 @@
+/* Lava (default): the brand palette.
+   Dark Void #151419 · Gluon Grey #1B1B1E · Slate Grey #262626 · Dusty Grey #878787 · Snow #FBFBFB · Liquid Lava #F56E0F */
+
+@layer components {
+  /* Palette → tokens. Exact palette colours where they fit; the few derived steps are noted. */
+  :root[data-style="lava"] {
+    --void: #151419; /* Dark Void */
+    --lava: #f56e0f; /* Liquid Lava */
+    --gluon: #1b1b1e; /* Gluon Grey */
+    --slate: #262626; /* Slate Grey */
+    --dusty: #878787; /* Dusty Grey */
+    --snow: #fbfbfb; /* Snow */
+
+    --canvas: #f2f2f2; /* derived: Snow, one step down */
+    --surface: var(--snow);
+    --surface-2: #f6f6f6;
+    --surface-3: #ececec;
+    --surface-solid: var(--snow);
+    --code: #f6f6f6;
+    --line: #e3e3e3;
+    --line-strong: #cbcbcb;
+    --fg: var(--void);
+    --muted: var(--slate);
+    --subtle: #6b6b6b; /* derived: Dusty darkened to 5.2:1 on Snow (Dusty itself is 3.5:1) */
+    --primary: var(--lava);
+    --primary-hover: #e0600a;
+    --primary-fg: var(--void);
+    --accent: var(--lava);
+    --accent-text: #b24f09; /* derived: Lava darkened for text (5.3:1) */
+    --start: #1d7f45;
+    --pause: #9a6a00;
+    --stop: #c8322b;
+    --warn: #9a6a00;
+    --danger: #c8322b;
+
+    --r-panel: 16px;
+    --r-control: 10px;
+    --r-input: 10px;
+    --font-body: "Urbanist", ui-sans-serif, system-ui, sans-serif;
+    --font-heading: "Urbanist", ui-sans-serif, system-ui, sans-serif;
+    --font-code: "JetBrains Mono", ui-monospace, Menlo, monospace;
+
+    --panel-shadow: 0 1px 2px rgb(21 20 25 / 0.05), 0 8px 24px -16px rgb(21 20 25 / 0.18);
+    --titlebar-bg: var(--surface-2);
+    --selected-bg: rgb(245 110 15 / 0.12);
+    --selected-fg: var(--fg);
+    --selected-border: rgb(245 110 15 / 0.55);
+    --deco-display: none;
+    --window-dots-display: none;
+    --backdrop: var(--canvas);
+  }
+
+  :root[data-style="lava"][data-mode="dark"] {
+    --canvas: var(--void);
+    --surface: var(--gluon);
+    --surface-2: var(--void);
+    --surface-3: var(--slate);
+    --surface-solid: var(--gluon);
+    --code: var(--void);
+    --line: var(--slate);
+    --line-strong: #3a3a3a; /* derived: Slate, one step up */
+    --fg: var(--snow);
+    --muted: #c1c1c1; /* derived: between Snow and Dusty */
+    --subtle: var(--dusty); /* 4.8:1 on Gluon */
+    --primary: var(--lava);
+    --primary-hover: #ff7d1f;
+    --primary-fg: var(--void);
+    --accent: var(--lava);
+    --accent-text: #ff8a3d;
+    --start: #4cc985;
+    --pause: #f2c14e;
+    --stop: #ff6b5b;
+    --warn: #f2c14e;
+    --danger: #ff6b5b;
+
+    --panel-shadow: 0 12px 32px -20px rgb(0 0 0 / 0.8);
+    --titlebar-bg: var(--gluon);
+    --selected-bg: rgb(245 110 15 / 0.16);
+    --selected-border: rgb(245 110 15 / 0.6);
+    --backdrop: var(--canvas);
+  }
+
+  [data-style="lava"] .ui-wordmark {
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  /* A molten full stop after the wordmark. */
+  [data-style="lava"] .ui-wordmark::after {
+    content: ".";
+    color: var(--primary);
+  }
+  [data-style="lava"] .ui-btn-primary {
+    font-weight: 800;
+    box-shadow: 0 6px 18px -8px rgb(245 110 15 / 0.7);
+  }
+  [data-style="lava"] .ui-tab.ui-selected {
+    border: 1px solid var(--selected-border);
+  }
+  [data-style="lava"] .ui-chip.ui-selected {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--primary-fg);
+  }
+  [data-style="lava"] .ui-counter {
+    background: var(--void);
+    color: var(--lava);
+  }
+  [data-style="lava"] .ui-toast {
+    background: var(--void);
+    color: var(--snow);
+    border: 1px solid var(--slate);
+  }
+
+  /* Ambient: two molten glows drifting slowly, like a lava lamp. */
+  :root[data-style="lava"] {
+    --ambient-display: block;
+    --lava-glow: rgb(245 110 15 / 0.07);
+  }
+  :root[data-style="lava"][data-mode="dark"] {
+    --lava-glow: rgb(245 110 15 / 0.11);
+  }
+  [data-style="lava"] .ui-ambient::before,
+  [data-style="lava"] .ui-ambient::after {
+    inset: auto;
+    width: 70vmax;
+    height: 70vmax;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, var(--lava-glow), transparent 72%);
+  }
+  [data-style="lava"] .ui-ambient::before {
+    top: -28vmax;
+    right: -18vmax;
+    animation: lava-drift-a 26s ease-in-out infinite alternate;
+  }
+  [data-style="lava"] .ui-ambient::after {
+    bottom: -34vmax;
+    left: -22vmax;
+    opacity: 0.8;
+    animation: lava-drift-b 34s ease-in-out infinite alternate;
+  }
+  @keyframes lava-drift-a {
+    to {
+      transform: translate(-14vmax, 12vmax) scale(1.18);
+    }
+  }
+  @keyframes lava-drift-b {
+    to {
+      transform: translate(12vmax, -10vmax) scale(0.88);
+    }
+  }
+}

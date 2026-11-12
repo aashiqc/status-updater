@@ -1,0 +1,423 @@
+/* Memphis: squiggles, confetti shapes and clashing 80s primaries (Memphis Group, Milan 1981).
+   Light = cream paper, ink outlines and black "sticker" shadows.
+   Dark  = deep ink-navy, cream outlines and hot-pink / yellow / mint sticker shadows.
+   Rule of thumb: surfaces get --m-outline (ink in light, cream in dark); bright fills always get ink. */
+
+@layer components {
+  :root[data-style="memphis"] {
+    --canvas: #fff6e5;
+    --surface: #fffdf8;
+    --surface-2: #fff3dc;
+    --surface-3: #ffe8a3;
+    --surface-solid: #fffdf8;
+    --code: #fffaf0;
+    --line: rgb(23 19 26 / 0.2);
+    --line-strong: rgb(23 19 26 / 0.55);
+    --fg: #17131a;
+    --muted: #3d3547;
+    --subtle: #574c68;
+    --primary: #ff4f79;
+    --primary-hover: #ff7396;
+    --primary-fg: #17131a;
+    --accent: #2b59ff;
+    --accent-text: #2448e0;
+    --start: #06693f;
+    --pause: #8f4d00;
+    --stop: #c2124a;
+    --warn: #7d4200;
+    --danger: #c2124a;
+
+    --r-panel: 8px;
+    --r-control: 9999px;
+    --r-input: 6px;
+    --font-body: "Rubik", ui-sans-serif, system-ui, sans-serif;
+    --font-heading: "Bungee", "Arial Black", Impact, ui-sans-serif, sans-serif;
+    --font-code: "Space Mono", ui-monospace, Menlo, monospace;
+
+    /* Memphis palette and roles (theme-private). */
+    --m-ink: #17131a;
+    --m-pink: #ff4f79;
+    --m-yellow: #ffd23f;
+    --m-cobalt: #2b59ff;
+    --m-mint: #3ddbb4;
+    --m-outline: var(--m-ink); /* outlines on surfaces */
+    --m-shadow-lg: var(--m-ink); /* panels, popovers, toast, counter */
+    --m-shadow-sm: var(--m-ink); /* chips, tabs, secondary buttons, inputs */
+    --m-shadow-btn: var(--m-ink); /* primary button */
+    --m-hover: #c6f2e5;
+    --m-knob: #ffffff;
+    --m-speck: rgb(23 19 26 / 0.06);
+    --m-bar-a: #ccd8ff; /* cobalt stripes: form + dialog title bars */
+    --m-bar-b: #b6c6ff;
+    --m-bar-mint-a: #c6f2e5; /* mint dots: sidebar title bar */
+    --m-bar-mint-b: #93e4cd;
+    --m-bar-pink-a: #ffd3dd; /* pink zigzag: preview title bar */
+    --m-bar-pink-b: #ffb0c3;
+
+    --panel-shadow: 6px 6px 0 var(--m-shadow-lg);
+    --popover-shadow: 5px 5px 0 var(--m-shadow-lg);
+    --titlebar-bg: repeating-linear-gradient(-45deg, var(--m-bar-b) 0 7px, var(--m-bar-a) 7px 14px);
+    --footer-bg: repeating-linear-gradient(45deg, var(--m-speck) 0 2px, transparent 2px 9px), var(--surface-2);
+    --input-bg: #ffffff;
+    --selected-bg: #ffe8a3;
+    --selected-fg: var(--fg);
+    --selected-border: var(--m-outline);
+    --selected-shadow: inset 0 0 0 2px var(--m-outline);
+    --deco-glyph: "▲";
+    --deco-display: inline-block;
+    --window-dots-display: flex;
+
+    /* Terrazzo specks on paper (co-prime tile sizes so the specks never line up). */
+    --backdrop:
+      radial-gradient(circle at 20% 30%, rgb(255 79 121 / 0.3) 0 2.5px, transparent 3px) 0 0 / 67px 71px,
+      radial-gradient(circle at 70% 60%, rgb(43 89 255 / 0.24) 0 2px, transparent 2.5px) 0 0 / 53px 59px,
+      radial-gradient(circle at 40% 80%, rgb(61 219 180 / 0.36) 0 3px, transparent 3.5px) 0 0 / 89px 83px,
+      radial-gradient(circle at 85% 15%, rgb(255 210 63 / 0.6) 0 3.5px, transparent 4px) 0 0 / 101px 97px,
+      var(--canvas);
+    /* Confetti tile: squiggles, zig-zag, triangles, circles, dot grid, hatching. */
+    --backdrop-overlay: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='360' height='360' viewBox='0 0 360 360' fill='none' stroke-linecap='round' stroke-linejoin='round'><path d='M24 70c12-18 24-18 36 0s24 18 36 0 24-18 36 0' stroke='%23ff4f79' stroke-width='6'/><path d='M232 34l38 62h-76z' stroke='%232b59ff' stroke-width='5'/><circle cx='300' cy='196' r='16' fill='%23ffd23f' stroke='%2317131a' stroke-width='3'/><path d='M36 236l16-16 16 16 16-16 16 16 16-16' stroke='%233ddbb4' stroke-width='6'/><g fill='%2317131a'><circle cx='178' cy='150' r='2.5'/><circle cx='190' cy='150' r='2.5'/><circle cx='202' cy='150' r='2.5'/><circle cx='178' cy='162' r='2.5'/><circle cx='190' cy='162' r='2.5'/><circle cx='202' cy='162' r='2.5'/><circle cx='178' cy='174' r='2.5'/><circle cx='190' cy='174' r='2.5'/><circle cx='202' cy='174' r='2.5'/></g><path d='M188 322a28 28 0 0 1 56 0z' fill='%23ff4f79'/><rect x='92' y='140' width='22' height='22' fill='%232b59ff' transform='rotate(18 103 151)'/><path d='M300 282v26M287 295h26' stroke='%2317131a' stroke-width='4'/><path d='M30 306l22-22M44 320l22-22M58 334l22-22' stroke='%232b59ff' stroke-width='4'/><circle cx='152' cy='40' r='9' stroke='%233ddbb4' stroke-width='4'/><path d='M318 112c-9 10 9 20 0 30s9 20 0 30' stroke='%23ffd23f' stroke-width='5'/><path d='M246 232l20 34h-40z' fill='%233ddbb4'/><circle cx='50' cy='170' r='7' fill='%23ff4f79'/></svg>") 0 0 / 360px 360px repeat;
+  }
+
+  :root[data-style="memphis"][data-mode="dark"] {
+    --canvas: #13112e;
+    --surface: #1f1c48;
+    --surface-2: #18163b;
+    --surface-3: #2e2a66;
+    --surface-solid: #1f1c48;
+    --code: #16143a;
+    --line: rgb(255 246 229 / 0.18);
+    --line-strong: rgb(255 246 229 / 0.5);
+    --fg: #fff6e5;
+    --muted: #ddd5f5;
+    --subtle: #b3aadb;
+    --primary: #ff4f79;
+    --primary-hover: #ff7396;
+    --primary-fg: #17131a;
+    --accent: #6b8aff;
+    --accent-text: #a3b6ff;
+    --start: #4ce8aa;
+    --pause: #ffd23f;
+    --stop: #ff7a98;
+    --warn: #ffc94a;
+    --danger: #ff7a98;
+
+    --m-cobalt: #6b8aff;
+    --m-outline: #fff6e5;
+    --m-shadow-lg: var(--m-pink);
+    --m-shadow-sm: var(--m-mint);
+    --m-shadow-btn: var(--m-yellow);
+    --m-hover: #1b4550;
+    --m-knob: #fff6e5;
+    --m-speck: rgb(255 246 229 / 0.06);
+    --m-bar-a: #25308a;
+    --m-bar-b: #2e3ba6;
+    --m-bar-mint-a: #0e4844;
+    --m-bar-mint-b: #19695f;
+    --m-bar-pink-a: #521b46;
+    --m-bar-pink-b: #72255f;
+
+    --input-bg: #17153a;
+    --selected-bg: #352f78;
+
+    --backdrop:
+      radial-gradient(circle at 20% 30%, rgb(255 79 121 / 0.4) 0 2.5px, transparent 3px) 0 0 / 67px 71px,
+      radial-gradient(circle at 70% 60%, rgb(107 138 255 / 0.4) 0 2px, transparent 2.5px) 0 0 / 53px 59px,
+      radial-gradient(circle at 40% 80%, rgb(61 219 180 / 0.35) 0 3px, transparent 3.5px) 0 0 / 89px 83px,
+      radial-gradient(circle at 85% 15%, rgb(255 210 63 / 0.3) 0 3.5px, transparent 4px) 0 0 / 101px 97px,
+      var(--canvas);
+    --backdrop-overlay: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='360' height='360' viewBox='0 0 360 360' fill='none' stroke-linecap='round' stroke-linejoin='round'><path d='M24 70c12-18 24-18 36 0s24 18 36 0 24-18 36 0' stroke='%23ff4f79' stroke-width='6'/><path d='M232 34l38 62h-76z' stroke='%236b8aff' stroke-width='5'/><circle cx='300' cy='196' r='16' fill='%23ffd23f' stroke='%23fff6e5' stroke-width='3'/><path d='M36 236l16-16 16 16 16-16 16 16 16-16' stroke='%233ddbb4' stroke-width='6'/><g fill='%23fff6e5'><circle cx='178' cy='150' r='2.5'/><circle cx='190' cy='150' r='2.5'/><circle cx='202' cy='150' r='2.5'/><circle cx='178' cy='162' r='2.5'/><circle cx='190' cy='162' r='2.5'/><circle cx='202' cy='162' r='2.5'/><circle cx='178' cy='174' r='2.5'/><circle cx='190' cy='174' r='2.5'/><circle cx='202' cy='174' r='2.5'/></g><path d='M188 322a28 28 0 0 1 56 0z' fill='%23ff4f79'/><rect x='92' y='140' width='22' height='22' fill='%236b8aff' transform='rotate(18 103 151)'/><path d='M300 282v26M287 295h26' stroke='%23fff6e5' stroke-width='4'/><path d='M30 306l22-22M44 320l22-22M58 334l22-22' stroke='%236b8aff' stroke-width='4'/><circle cx='152' cy='40' r='9' stroke='%233ddbb4' stroke-width='4'/><path d='M318 112c-9 10 9 20 0 30s9 20 0 30' stroke='%23ffd23f' stroke-width='5'/><path d='M246 232l20 34h-40z' fill='%233ddbb4'/><circle cx='50' cy='170' r='7' fill='%23ff4f79'/></svg>") 0 0 / 360px 360px repeat;
+  }
+
+  /* Backdrop ---------------------------------------------------------------- */
+  /* Confetti is faded out of the top and bottom bands, where the header and footer text sit on the page. */
+  [data-style="memphis"] body::after {
+    opacity: 0.6;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0 46px, #000 72px, #000 calc(100% - 62px), transparent calc(100% - 38px));
+    mask-image: linear-gradient(to bottom, transparent 0 46px, #000 72px, #000 calc(100% - 62px), transparent calc(100% - 38px));
+  }
+  [data-style="memphis"][data-mode="dark"] body::after {
+    opacity: 0.5;
+  }
+
+  /* Panels: thick outline + hard sticker shadow (via --panel-shadow / --popover-shadow). */
+  [data-style="memphis"] .ui-panel {
+    border: 3px solid var(--m-outline);
+  }
+  [data-style="memphis"] .ui-titlebar {
+    --tab-font: var(--font-heading);
+    border-bottom: 3px solid var(--m-outline);
+    border-top-left-radius: calc(var(--r-panel) - 3px);
+    border-top-right-radius: calc(var(--r-panel) - 3px);
+  }
+  [data-style="memphis"] .ui-panel-footer {
+    border-top: 3px solid var(--m-outline);
+    border-bottom-left-radius: calc(var(--r-panel) - 3px);
+    border-bottom-right-radius: calc(var(--r-panel) - 3px);
+  }
+  /* A different pattern per panel: cobalt stripes (default), mint dots (sidebar), pink zig-zag (preview). */
+  [data-style="memphis"] aside.ui-panel {
+    --titlebar-bg: radial-gradient(circle, var(--m-bar-mint-b) 0 2px, transparent 2.5px) 0 0 / 9px 9px, var(--m-bar-mint-a);
+  }
+  [data-style="memphis"] .ui-titlebar:has(> .ui-window-dots) {
+    background:
+      linear-gradient(135deg, var(--m-bar-pink-b) 25%, transparent 25%) -8px 0 / 16px 16px,
+      linear-gradient(225deg, var(--m-bar-pink-b) 25%, transparent 25%) -8px 0 / 16px 16px,
+      linear-gradient(315deg, var(--m-bar-pink-b) 25%, transparent 25%) 0 0 / 16px 16px,
+      linear-gradient(45deg, var(--m-bar-pink-b) 25%, transparent 25%) 0 0 / 16px 16px,
+      var(--m-bar-pink-a);
+  }
+  [data-style="memphis"] .ui-titlebar .ui-tagline {
+    color: var(--muted);
+  }
+
+  /* Type ------------------------------------------------------------------- */
+  /* Bungee ships one weight: never fake-bold it. */
+  [data-style="memphis"] .ui-wordmark {
+    font-weight: 400;
+    font-synthesis: none;
+    letter-spacing: 0.02em;
+    text-shadow:
+      2px 2px 0 var(--m-pink),
+      4px 4px 0 var(--m-cobalt);
+  }
+  [data-style="memphis"] .ui-heading {
+    font-weight: 400;
+    font-synthesis: none;
+    letter-spacing: 0.04em;
+  }
+  [data-style="memphis"] .ui-deco {
+    color: var(--m-pink);
+    text-shadow: 1px 1px 0 var(--m-outline);
+  }
+  [data-style="memphis"] h1 > .ui-deco {
+    text-shadow: 2px 2px 0 var(--m-outline);
+    animation: memphis-wobble 5s ease-in-out infinite;
+  }
+  [data-style="memphis"] .ui-titlebar .ui-deco {
+    color: var(--accent-text);
+    font-weight: 800;
+    text-shadow: none;
+  }
+  [data-style="memphis"] .ui-titlebar .ui-deco::before {
+    content: "≈";
+  }
+  @keyframes memphis-wobble {
+    0%,
+    100% {
+      transform: rotate(-8deg);
+    }
+    50% {
+      transform: rotate(8deg);
+    }
+  }
+
+  /* Tabs ------------------------------------------------------------------- */
+  /* Theme-menu rows (tabs outside a title bar) keep the softer --selected-* fill, since their text uses fg/subtle.
+     Kept before the title-bar rules, which share its specificity and must win. */
+  [data-style="memphis"] .ui-tab:not(.ui-selected):hover {
+    background: var(--m-hover);
+  }
+  [data-style="memphis"] .ui-titlebar .ui-tab {
+    color: var(--muted);
+    letter-spacing: 0.03em;
+    font-synthesis: none;
+  }
+  [data-style="memphis"] .ui-titlebar .ui-tab:hover {
+    color: var(--fg);
+    background: color-mix(in oklab, var(--surface) 70%, transparent);
+  }
+  [data-style="memphis"] .ui-titlebar .ui-tab.ui-selected,
+  [data-style="memphis"] .ui-titlebar .ui-tab.ui-selected:hover {
+    background: var(--m-yellow);
+    color: var(--m-ink);
+    box-shadow:
+      inset 0 0 0 2px var(--m-ink),
+      2px 2px 0 var(--m-shadow-sm);
+  }
+
+  /* Buttons ---------------------------------------------------------------- */
+  [data-style="memphis"] .ui-btn {
+    border-width: 2px;
+  }
+  [data-style="memphis"] .ui-btn-primary {
+    border-color: var(--m-ink);
+    box-shadow: 4px 4px 0 var(--m-shadow-btn);
+    font-family: var(--font-heading);
+    font-synthesis: none;
+    letter-spacing: 0.04em;
+  }
+  [data-style="memphis"] .ui-btn-primary:active:not(:disabled) {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 var(--m-shadow-btn);
+  }
+  [data-style="memphis"] .ui-btn-secondary {
+    background: var(--surface);
+    border-color: var(--m-outline);
+    box-shadow: 2px 2px 0 var(--m-shadow-sm);
+  }
+  [data-style="memphis"] .ui-btn-secondary:hover:not(:disabled) {
+    background: var(--m-hover);
+  }
+  [data-style="memphis"] .ui-btn-secondary[aria-expanded="true"],
+  [data-style="memphis"] .ui-btn-secondary[aria-expanded="true"]:hover:not(:disabled) {
+    background: var(--m-yellow);
+    border-color: var(--m-ink);
+    color: var(--m-ink);
+  }
+  [data-style="memphis"] .ui-btn-secondary:active:not(:disabled) {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 var(--m-shadow-sm);
+  }
+  [data-style="memphis"] .ui-btn-ghost {
+    border-style: dashed;
+  }
+  [data-style="memphis"] .ui-btn-ghost:hover:not(:disabled) {
+    background: var(--m-hover);
+    border-color: var(--m-outline);
+    color: var(--fg);
+  }
+
+  /* Inputs ----------------------------------------------------------------- */
+  [data-style="memphis"] .ui-input {
+    border: 2px solid var(--m-outline);
+  }
+  [data-style="memphis"] .ui-input:hover {
+    box-shadow: 2px 2px 0 var(--m-shadow-sm);
+  }
+  [data-style="memphis"] .ui-input[aria-invalid="true"] {
+    border-color: var(--warn);
+  }
+  [data-style="memphis"] .ui-input:focus,
+  [data-style="memphis"] .ui-input:focus-within {
+    outline: none;
+    box-shadow: 3px 3px 0 var(--accent);
+  }
+
+  /* Chips, segments, switch ------------------------------------------------ */
+  [data-style="memphis"] .ui-chip {
+    border: 2px solid var(--m-outline);
+    background: var(--surface);
+  }
+  [data-style="memphis"] .ui-chip:not(.ui-selected):hover {
+    background: var(--m-hover);
+    border-color: var(--m-outline);
+    color: var(--fg);
+  }
+  [data-style="memphis"] .ui-chip.ui-selected,
+  [data-style="memphis"] .ui-chip.ui-selected:hover {
+    background: var(--m-yellow);
+    border-color: var(--m-ink);
+    color: var(--m-ink);
+    box-shadow: 2px 2px 0 var(--m-shadow-sm);
+  }
+
+  [data-style="memphis"] .ui-seg {
+    border: 2px solid var(--m-outline);
+    background: var(--surface-2);
+  }
+  [data-style="memphis"] .ui-seg-item.ui-selected,
+  [data-style="memphis"] .ui-seg-item.ui-selected:hover {
+    background: var(--m-mint);
+    color: var(--m-ink);
+    box-shadow: inset 0 0 0 2px var(--m-ink);
+  }
+
+  [data-style="memphis"] .ui-switch {
+    border: 2px solid var(--m-outline);
+    background: var(--surface-3);
+  }
+  [data-style="memphis"] .ui-switch[aria-checked="true"] {
+    background: var(--m-pink);
+    border-color: var(--m-outline);
+  }
+  [data-style="memphis"] .ui-switch-knob {
+    background: var(--m-knob);
+    box-shadow: 0 0 0 1.5px var(--m-ink);
+  }
+
+  /* Bits ------------------------------------------------------------------- */
+  [data-style="memphis"] .ui-dot {
+    box-shadow: 0 0 0 1.5px var(--m-outline);
+  }
+  /* Preview window "dots" become Memphis shapes in pure brights: square, circle, triangle. */
+  [data-style="memphis"] .ui-window-dots .ui-dot:nth-child(1) {
+    background: var(--m-pink);
+    border-radius: 1px;
+  }
+  [data-style="memphis"] .ui-window-dots .ui-dot:nth-child(2) {
+    background: var(--m-yellow);
+  }
+  [data-style="memphis"] .ui-window-dots .ui-dot:nth-child(3) {
+    background: var(--m-cobalt);
+    border-radius: 0;
+    box-shadow: none;
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    transform: scale(1.2);
+  }
+
+  [data-style="memphis"] .ui-code {
+    border: 2px solid var(--m-outline);
+    background:
+      radial-gradient(circle, var(--m-speck) 0 1px, transparent 1.5px) 0 0 / 14px 14px,
+      var(--code);
+  }
+
+  [data-style="memphis"] .ui-counter {
+    background: var(--m-mint);
+    color: var(--m-ink);
+    font-weight: 700;
+    border-radius: 4px;
+    box-shadow:
+      inset 0 0 0 1.5px var(--m-ink),
+      2px 2px 0 var(--m-shadow-lg);
+  }
+
+  [data-style="memphis"] .ui-toast {
+    background: var(--m-yellow);
+    color: var(--m-ink);
+    border: 2px solid var(--m-ink);
+    box-shadow: 4px 4px 0 var(--m-shadow-lg);
+  }
+
+  /* Halftone dots over the dimmed page behind dialogs (literal colours: ::backdrop may not inherit tokens). */
+  [data-style="memphis"] dialog::backdrop {
+    background:
+      radial-gradient(circle, rgb(255 79 121 / 0.45) 0 1.5px, transparent 2px) 0 0 / 14px 14px,
+      rgb(23 19 26 / 0.42);
+  }
+  [data-style="memphis"][data-mode="dark"] dialog::backdrop {
+    background:
+      radial-gradient(circle, rgb(255 210 63 / 0.3) 0 1.5px, transparent 2px) 0 0 / 14px 14px,
+      rgb(6 5 20 / 0.62);
+  }
+
+  /* Ambient (integrator): the confetti now lives on the ambient layer, softer, drifting slowly on a
+     diagonal. The static copy on body::after is switched off; the header/footer fade mask is kept. */
+  :root[data-style="memphis"] {
+    --ambient-display: block;
+  }
+  [data-style="memphis"] body::after {
+    background: none;
+  }
+  [data-style="memphis"] .ui-ambient {
+    opacity: 0.2;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0 46px, #000 72px, #000 calc(100% - 62px), transparent calc(100% - 38px));
+    mask-image: linear-gradient(to bottom, transparent 0 46px, #000 72px, #000 calc(100% - 62px), transparent calc(100% - 38px));
+  }
+  [data-style="memphis"][data-mode="dark"] .ui-ambient {
+    opacity: 0.22;
+  }
+  [data-style="memphis"] .ui-ambient::before {
+    inset: -360px 0 0 -360px;
+    background: var(--backdrop-overlay);
+    animation: memphis-drift 90s linear infinite;
+  }
+  [data-style="memphis"] .ui-ambient::after {
+    content: none;
+  }
+  @keyframes memphis-drift {
+    to {
+      transform: translate(360px, 360px);
+    }
+  }
+}

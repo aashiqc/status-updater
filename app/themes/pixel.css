@@ -1,0 +1,569 @@
+/* Pixel: 8-bit game screens and pixel type.
+   Light = Game Boy (DMG) LCD greens, with the handheld's berry A/B-button colour for the main action.
+   Dark  = arcade / console night: near-black, crisp pixel starfield, NES-style red / yellow / green / blue.
+
+   Pixel language: radius 0 everywhere; notched-corner outlines drawn with four 0-blur box-shadows
+   (outside the box, so no layout cost); hard offset drop shadows; inset bevels; steps() motion only.
+
+   Fonts: Press Start 2P (wordmark, headings, title-bar tabs, START button, score, deco glyphs),
+   Pixelify Sans (body, inputs), VT323 (code). Press Start 2P is 1em wide per glyph and VT323 is tiny,
+   so both are calibrated with font-size-adjust (a font property: it scales the glyphs, not the
+   computed font-size, so line boxes and the Tailwind size utilities are untouched).
+   Metrics used: Press Start 2P x-height 0.75, Pixelify Sans 0.45, VT323 0.40. */
+
+@layer components {
+  :root[data-style="pixel"] {
+    --canvas: #bcd35a;
+    --surface: #e2eeb4;
+    --surface-2: #d6e6a0;
+    --surface-3: #cadc8c;
+    --surface-solid: #e2eeb4;
+    --code: #c8dc80;
+    --line: #98b444;
+    --line-strong: #306230;
+    --fg: #0f380f;
+    --muted: #1f461f;
+    --subtle: #2c4f18;
+    --primary: #8e1d4f;
+    --primary-hover: #a3245c;
+    --primary-fg: #fff5f8;
+    --accent: #a01f4e;
+    --accent-text: #8a1c4c;
+    --start: #135a0c;
+    --pause: #6e4000;
+    --stop: #951c13;
+    --warn: #6e4000;
+    --danger: #951c13;
+
+    --r-panel: 0px;
+    --r-control: 0px;
+    --r-input: 0px;
+    --font-body: "Pixelify Sans", ui-sans-serif, system-ui, sans-serif;
+    --font-heading: "Press Start 2P", "Pixelify Sans", ui-monospace, monospace;
+    --font-code: "VT323", ui-monospace, Menlo, monospace;
+
+    /* Pixel kit (theme-private). */
+    --px-ink: #0f380f; /* outer outlines: panels, buttons, toast */
+    --px-edge: #0f380f; /* control borders and inner rules */
+    --px-drop: #8bac0f; /* panel drop shadow */
+    --px-btn-drop: #306230;
+    --px-primary-drop: #306230;
+    --px-hi: rgb(255 255 255 / 0.45);
+    --px-lo: rgb(15 56 15 / 0.28);
+    --px-lo-soft: rgb(15 56 15 / 0.14);
+    --px-hover: rgb(15 56 15 / 0.08);
+    --px-key: #eef5cf; /* raised key faces: chips, secondary buttons */
+    --px-key-hover: #f7fbe6;
+    --px-tray: #cadc8c; /* sunken tracks: segmented, switch */
+    --px-paper: #f4f9dc;
+    --px-pick-bg: #0f380f; /* selected chip / segment: inverted LCD */
+    --px-pick-fg: #e6f2b8;
+    --px-tab-sel: #f4f9dc;
+    --px-cursor: #0f380f;
+    --px-heart: #b8202d;
+    --px-star: #a01f4e;
+    --px-dot-filter: brightness(1.3) saturate(1.2);
+    --px-score-bg: #0f380f;
+    --px-score-label: #9bbc0f;
+    --px-score-fg: #c5e05a;
+    --px-toast-bg: #0f380f;
+    --px-toast-fg: #e6f2b8;
+    --px-toast-line: #e6f2b8;
+    --px-toast-drop: rgb(15 56 15 / 0.35);
+    --px-title: #f4f9dc;
+    --px-title-shadow: -2px 0 0 #0f380f, 2px 0 0 #0f380f, 0 -2px 0 #0f380f, 0 2px 0 #0f380f, 2px 2px 0 #0f380f,
+      4px 4px 0 #8bac0f;
+    --px-dither: #afc84c;
+    --px-grid: rgb(15 56 15 / 0.07);
+    --px-code-fg: var(--fg);
+    --px-code-bg:
+      repeating-linear-gradient(to bottom, transparent 0 2px, rgb(15 56 15 / 0.07) 2px 3px),
+      repeating-linear-gradient(to right, transparent 0 2px, rgb(15 56 15 / 0.035) 2px 3px), var(--code);
+    --px-ring2: 0 -2px 0 0 var(--px-ink), 0 2px 0 0 var(--px-ink), -2px 0 0 0 var(--px-ink), 2px 0 0 0 var(--px-ink);
+    --px-ring3: 0 -3px 0 0 var(--px-ink), 0 3px 0 0 var(--px-ink), -3px 0 0 0 var(--px-ink), 3px 0 0 0 var(--px-ink);
+
+    /* Hooks-by-token. */
+    --panel-shadow: var(--px-ring3), 6px 6px 0 0 var(--px-drop);
+    --titlebar-bg: #cddf90;
+    --footer-bg: #d6e6a0;
+    --input-bg: #eef5cf;
+    --input-shadow: inset 2px 2px 0 0 var(--px-lo-soft);
+    --selected-bg: #f4f9dc;
+    --selected-fg: var(--fg);
+    --selected-border: transparent;
+    --selected-shadow: inset 0 0 0 2px var(--px-ink);
+    --tab-font: var(--font-body);
+    --deco-glyph: "\2605";
+    --deco-display: inline-block;
+    --window-dots-display: flex;
+    /* LCD pixel grid. */
+    --backdrop:
+      linear-gradient(var(--px-grid) 1px, transparent 1px) 0 0 / 8px 8px,
+      linear-gradient(90deg, var(--px-grid) 1px, transparent 1px) 0 0 / 8px 8px, var(--canvas);
+  }
+
+  :root[data-style="pixel"][data-mode="dark"] {
+    --canvas: #0e0c16;
+    --surface: #191626;
+    --surface-2: #221e33;
+    --surface-3: #2e2944;
+    --surface-solid: #191626;
+    --code: #090c0b;
+    --line: #3a4466;
+    --line-strong: #5a6988;
+    --fg: #f4f4f4;
+    --muted: #c0cbdc;
+    --subtle: #97a5bd;
+    --primary: #feae34;
+    --primary-hover: #fee761;
+    --primary-fg: #181425;
+    --accent: #0099db;
+    --accent-text: #3cbcfc;
+    --start: #63c74d;
+    --pause: #feae34;
+    --stop: #ff6b72;
+    --warn: #feae34;
+    --danger: #ff6b72;
+
+    --px-ink: #c0cbdc;
+    --px-edge: #6b7a9c;
+    --px-drop: #2b3150;
+    --px-btn-drop: #3a4466;
+    --px-primary-drop: #be4a2f;
+    --px-hi: rgb(255 255 255 / 0.14);
+    --px-lo: rgb(0 0 0 / 0.4);
+    --px-lo-soft: rgb(0 0 0 / 0.35);
+    --px-hover: rgb(255 255 255 / 0.06);
+    --px-key: #262b44;
+    --px-key-hover: #3a4466;
+    --px-tray: #110f1b;
+    --px-paper: #f4f4f4;
+    --px-pick-bg: #feae34;
+    --px-pick-fg: #181425;
+    --px-tab-sel: #3b4b9a;
+    --px-cursor: #feae34;
+    --px-heart: #e43b44;
+    --px-star: #feae34;
+    --px-dot-filter: none;
+    --px-score-bg: #000000;
+    --px-score-label: #e43b44;
+    --px-score-fg: #f4f4f4;
+    --px-toast-bg: #0e0c16;
+    --px-toast-fg: #f4f4f4;
+    --px-toast-line: #0e0c16;
+    --px-toast-drop: rgb(0 0 0 / 0.6);
+    --px-title: #feae34;
+    --px-title-shadow: 2px 2px 0 #e43b44, 4px 4px 0 #5d275d;
+    --px-code-fg: #cff5c8;
+    /* CRT: phosphor raster lines + a faint centre glow. */
+    --px-code-bg:
+      repeating-linear-gradient(to bottom, rgb(99 199 77 / 0.055) 0 1px, transparent 1px 3px),
+      radial-gradient(120% 100% at 50% 45%, rgb(99 199 77 / 0.07), transparent 70%), var(--code);
+
+    --titlebar-bg: #232845;
+    --footer-bg: #15121f;
+    --input-bg: #110f1b;
+    --selected-bg: #2a3260;
+    --selected-shadow: inset 0 0 0 2px #feae34;
+    /* Crisp 2px pixel stars (each conic layer paints one 2x2 square per tile; co-prime tiles
+       scatter them) over a stepped, banded horizon glow. */
+    --backdrop:
+      conic-gradient(at 2px 2px, transparent 75%, #c0cbdc 0) 23px 41px / 211px 173px,
+      conic-gradient(at 2px 2px, transparent 75%, #8b9bb4 0) 131px 97px / 157px 229px,
+      conic-gradient(at 2px 2px, transparent 75%, #5a6988 0) 67px 13px / 127px 101px,
+      conic-gradient(at 2px 2px, transparent 75%, #feae34 0) 173px 151px / 283px 257px,
+      conic-gradient(at 2px 2px, transparent 75%, #0099db 0) 89px 211px / 337px 311px,
+      radial-gradient(140% 60% at 50% 118%, #261d42 0 38%, #1d1733 38% 52%, #16121f 52% 66%, transparent 66%),
+      var(--canvas);
+  }
+
+  /* Backdrop ---------------------------------------------------------------- */
+  [data-style="pixel"] body::before,
+  [data-style="pixel"] body::after {
+    image-rendering: pixelated;
+  }
+  /* Light: a checkerboard dither band fading up from the bottom in hard steps. */
+  [data-style="pixel"] body::after {
+    background: conic-gradient(var(--px-dither) 25%, transparent 0 50%, var(--px-dither) 0 75%, transparent 0) 0 0 / 4px
+      4px;
+    -webkit-mask-image: linear-gradient(to top, #000 0 9%, rgb(0 0 0 / 0.6) 9% 18%, rgb(0 0 0 / 0.3) 18% 27%, transparent 27%);
+    mask-image: linear-gradient(to top, #000 0 9%, rgb(0 0 0 / 0.6) 9% 18%, rgb(0 0 0 / 0.3) 18% 27%, transparent 27%);
+  }
+  /* Dark: faint CRT scanlines over the starfield. */
+  [data-style="pixel"][data-mode="dark"] body::after {
+    background: repeating-linear-gradient(to bottom, transparent 0 2px, rgb(0 0 0 / 0.3) 2px 3px);
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  /* Panels: game dialog boxes ------------------------------------------------ */
+  [data-style="pixel"] .ui-panel {
+    border-color: var(--px-ink);
+  }
+  /* Menus and dialogs carry a soft shadow-2xl utility; swap it for the hard pixel frame. */
+  [data-style="pixel"] .ui-popover {
+    box-shadow: var(--panel-shadow) !important;
+  }
+  [data-style="pixel"] .ui-titlebar {
+    border-bottom-color: var(--px-edge);
+    box-shadow:
+      inset 0 -2px 0 0 var(--px-edge),
+      inset 0 2px 0 0 var(--px-hi);
+  }
+  [data-style="pixel"] .ui-panel-footer {
+    border-top-color: var(--px-edge);
+    box-shadow: inset 0 2px 0 0 var(--px-edge);
+  }
+
+  /* Type -------------------------------------------------------------------- */
+  /* Press Start 2P ships one weight: never fake-bold it. */
+  [data-style="pixel"] .ui-wordmark,
+  [data-style="pixel"] .ui-heading,
+  [data-style="pixel"] .ui-deco,
+  [data-style="pixel"] .ui-counter,
+  [data-style="pixel"] .ui-titlebar .ui-tab,
+  [data-style="pixel"] .ui-btn-primary {
+    font-weight: 400;
+    font-synthesis: none;
+    letter-spacing: 0;
+  }
+  /* Title screen logo: pale fill, ink pixel outline, green extrusion (dark: yellow, red/purple). */
+  [data-style="pixel"] .ui-wordmark {
+    font-family: var(--font-heading);
+    font-size-adjust: 0.6; /* 20px utility renders as crisp 16px (2px font-pixels) */
+    text-transform: uppercase;
+    color: var(--px-title);
+    text-shadow: var(--px-title-shadow);
+  }
+  @media (max-width: 639px) {
+    [data-style="pixel"] .ui-wordmark {
+      font-size-adjust: 0.45; /* 12px on phones so the header still fits */
+    }
+  }
+  [data-style="pixel"] .ui-heading {
+    text-transform: uppercase;
+  }
+  [data-style="pixel"] .ui-label {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* Decorative glyphs: a bobbing star by the logo, three lives on the preview window,
+     a menu cursor before history days. Press Start 2P draws all three as pixel art. */
+  [data-style="pixel"] .ui-deco {
+    font-family: var(--font-heading);
+    font-size-adjust: none;
+    color: var(--px-star);
+    animation: pixel-bob 1.6s steps(1, end) infinite;
+  }
+  [data-style="pixel"] .ui-titlebar .ui-deco {
+    color: var(--px-heart);
+    animation: none;
+  }
+  [data-style="pixel"] .ui-titlebar .ui-deco::before {
+    content: "\2665\2665\2665";
+  }
+  [data-style="pixel"] .ui-heading .ui-deco {
+    color: var(--accent);
+    animation: none;
+  }
+  [data-style="pixel"] .ui-heading .ui-deco::before {
+    content: "\25B6";
+  }
+  @keyframes pixel-bob {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-2px);
+    }
+  }
+
+  /* Controls ---------------------------------------------------------------- */
+  [data-style="pixel"] .ui-input {
+    border-color: var(--px-edge);
+    box-shadow: inset 2px 2px 0 0 var(--px-lo-soft);
+    font-size-adjust: 0.45; /* no-op for Pixelify; lifts VT323 in the paste box to match it */
+    transition: none;
+  }
+  [data-style="pixel"] .ui-input:hover {
+    border-color: var(--px-edge);
+  }
+  [data-style="pixel"] .ui-input:focus,
+  [data-style="pixel"] .ui-input:focus-within {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow:
+      inset 2px 2px 0 0 var(--px-lo-soft),
+      0 0 0 2px var(--accent);
+  }
+  [data-style="pixel"] .ui-input[aria-invalid="true"]:not(:focus) {
+    border-color: var(--warn);
+    box-shadow:
+      inset 2px 2px 0 0 var(--px-lo-soft),
+      inset 0 0 0 1px var(--warn);
+  }
+
+  [data-style="pixel"] .ui-btn {
+    transition: none;
+  }
+  /* START button: pixel frame, bevel and a hard shadow that it drops into when pressed. */
+  [data-style="pixel"] .ui-btn-primary {
+    border-color: var(--px-ink);
+    font-family: var(--font-heading);
+    font-size-adjust: 0.6;
+    text-transform: uppercase;
+    box-shadow:
+      var(--px-ring2),
+      inset -3px -3px 0 0 var(--px-lo),
+      inset 3px 3px 0 0 var(--px-hi),
+      4px 4px 0 0 var(--px-primary-drop);
+  }
+  [data-style="pixel"] .ui-btn-primary:hover:not(:disabled) {
+    background: var(--primary-hover);
+  }
+  [data-style="pixel"] .ui-btn-primary:active:not(:disabled) {
+    transform: translate(4px, 4px);
+    box-shadow:
+      var(--px-ring2),
+      inset 3px 3px 0 0 var(--px-lo);
+  }
+  [data-style="pixel"] .ui-btn-secondary {
+    background: var(--px-key);
+    border-color: var(--px-ink);
+    box-shadow:
+      var(--px-ring2),
+      inset -2px -2px 0 0 var(--px-lo),
+      inset 2px 2px 0 0 var(--px-hi),
+      3px 3px 0 0 var(--px-btn-drop);
+  }
+  [data-style="pixel"] .ui-btn-secondary:hover:not(:disabled) {
+    background: var(--px-key-hover);
+  }
+  [data-style="pixel"] .ui-btn-secondary:active:not(:disabled),
+  [data-style="pixel"] .ui-btn-secondary[aria-expanded="true"] {
+    transform: translate(3px, 3px);
+    box-shadow:
+      var(--px-ring2),
+      inset 2px 2px 0 0 var(--px-lo);
+  }
+  [data-style="pixel"] .ui-btn-ghost:hover:not(:disabled) {
+    background: var(--surface-3);
+    color: var(--fg);
+    box-shadow: inset -2px -2px 0 0 var(--px-lo-soft);
+  }
+  [data-style="pixel"] .ui-btn-ghost:active:not(:disabled) {
+    box-shadow: inset 2px 2px 0 0 var(--px-lo-soft);
+  }
+
+  /* Raised key chips; selected = pressed and inverted. */
+  [data-style="pixel"] .ui-chip {
+    background: var(--px-key);
+    border-color: var(--px-edge);
+    box-shadow: inset -2px -2px 0 0 var(--px-lo-soft);
+    transition: none;
+  }
+  [data-style="pixel"] .ui-chip:hover {
+    background: var(--px-key-hover);
+    border-color: var(--px-edge);
+    color: var(--fg);
+  }
+  [data-style="pixel"] .ui-chip:active {
+    box-shadow: inset 2px 2px 0 0 var(--px-lo-soft);
+  }
+
+  [data-style="pixel"] .ui-seg {
+    border-color: var(--px-edge);
+    background: var(--px-tray);
+    box-shadow: inset 2px 2px 0 0 var(--px-lo-soft);
+  }
+  [data-style="pixel"] .ui-seg-item,
+  [data-style="pixel"] .ui-tab {
+    transition: none;
+  }
+  [data-style="pixel"] .ui-chip.ui-selected,
+  [data-style="pixel"] .ui-seg-item.ui-selected {
+    background: var(--px-pick-bg);
+    color: var(--px-pick-fg);
+    border-color: var(--px-pick-bg);
+    box-shadow: inset 2px 2px 0 0 var(--px-lo);
+  }
+
+  [data-style="pixel"] .ui-tab:not(.ui-selected):hover {
+    background: var(--px-hover);
+  }
+  /* Title-bar tabs (START/PAUSE/STOP, Open/History) in the pixel face; theme-menu items keep the body font. */
+  [data-style="pixel"] .ui-titlebar .ui-tab {
+    font-family: var(--font-heading);
+    font-size-adjust: 0.5625; /* 12.5-13px utilities render at ~9.5px */
+    text-transform: uppercase;
+  }
+  /* Selected title-bar tab: a lit tile with a blinking pixel "▶" menu cursor in its left padding
+     (three 2px columns, 10/6/2px tall, painted as background layers). */
+  [data-style="pixel"] .ui-titlebar .ui-tab.ui-selected {
+    background:
+      linear-gradient(var(--px-cursor), var(--px-cursor)) 3px 50% / 2px 10px no-repeat,
+      linear-gradient(var(--px-cursor), var(--px-cursor)) 5px 50% / 2px 6px no-repeat,
+      linear-gradient(var(--px-cursor), var(--px-cursor)) 7px 50% / 2px 2px no-repeat,
+      var(--px-tab-sel);
+    color: var(--selected-fg);
+    box-shadow: inset -2px -2px 0 0 var(--px-lo);
+    animation: pixel-cursor 1.6s steps(1, end) infinite;
+  }
+  @keyframes pixel-cursor {
+    0%,
+    74% {
+      background-size:
+        2px 10px,
+        2px 6px,
+        2px 2px;
+    }
+    75%,
+    100% {
+      background-size:
+        0 0,
+        0 0,
+        0 0;
+    }
+  }
+
+  [data-style="pixel"] .ui-switch {
+    border-radius: 0;
+    border-color: var(--px-edge);
+    background: var(--px-tray);
+    box-shadow: inset 2px 2px 0 0 var(--px-lo-soft);
+    transition: none;
+  }
+  [data-style="pixel"] .ui-switch[aria-checked="true"] {
+    background: var(--primary);
+    border-color: var(--px-edge);
+  }
+  [data-style="pixel"] .ui-switch-knob {
+    border-radius: 0;
+    background: var(--px-paper);
+    box-shadow:
+      0 0 0 1px var(--px-edge),
+      inset -2px -2px 0 0 var(--px-lo-soft);
+  }
+
+  [data-style="pixel"] .ui-kbd {
+    border-radius: 0;
+    border-color: color-mix(in oklab, currentColor 45%, transparent);
+    box-shadow: inset 0 -2px 0 0 color-mix(in oklab, currentColor 22%, transparent);
+    font-size-adjust: none;
+  }
+
+  /* Bits -------------------------------------------------------------------- */
+  /* Square bevelled pixels (light mode brightens the text-safe status colours for the swatch). */
+  [data-style="pixel"] .ui-dot {
+    border-radius: 0;
+    box-shadow:
+      inset -2px -2px 0 0 rgb(0 0 0 / 0.3),
+      inset 2px 2px 0 0 rgb(255 255 255 / 0.3);
+    filter: var(--px-dot-filter);
+  }
+
+  /* LCD (light) / CRT (dark) screen: raster lines live in the background, under crisp text. */
+  [data-style="pixel"] .ui-code {
+    background: var(--px-code-bg);
+    border-color: var(--px-edge);
+    box-shadow: inset 2px 2px 0 0 var(--px-lo-soft);
+    color: var(--px-code-fg);
+    font-size-adjust: 0.5; /* VT323 renders ~1.25x: 12px utility reads as 15px */
+    font-synthesis: style; /* VT323 has one weight: no smeared fake bold */
+  }
+
+  /* Arcade score readout: "SCORE 003". */
+  [data-style="pixel"] .ui-counter {
+    font-family: var(--font-heading);
+    font-size: 8px; /* Press Start 2P's native size: 1px font-pixels */
+    border-radius: 0;
+    background: var(--px-score-bg);
+    color: var(--px-score-fg);
+    box-shadow:
+      0 -2px 0 0 var(--px-score-bg),
+      0 2px 0 0 var(--px-score-bg),
+      -2px 0 0 0 var(--px-score-bg),
+      2px 0 0 0 var(--px-score-bg);
+  }
+  [data-style="pixel"] .ui-counter::before {
+    content: "SCORE ";
+    color: var(--px-score-label);
+  }
+
+  /* Text-box toast with notched corners (light: inverted LCD with an inner rule). */
+  [data-style="pixel"] .ui-toast {
+    border-radius: 0;
+    background: var(--px-toast-bg);
+    color: var(--px-toast-fg);
+    box-shadow:
+      var(--px-ring3),
+      inset 0 0 0 2px var(--px-toast-bg),
+      inset 0 0 0 3px var(--px-toast-line),
+      6px 6px 0 0 var(--px-toast-drop);
+  }
+
+  /* Screen-door dim behind dialogs (literal colours: ::backdrop may not inherit tokens). */
+  [data-style="pixel"] dialog::backdrop {
+    background:
+      conic-gradient(rgb(15 56 15 / 0.55) 25%, transparent 0 50%, rgb(15 56 15 / 0.55) 0 75%, transparent 0) 0 0 / 4px 4px,
+      rgb(15 56 15 / 0.2);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  [data-style="pixel"][data-mode="dark"] dialog::backdrop {
+    background:
+      conic-gradient(rgb(0 0 0 / 0.7) 25%, transparent 0 50%, rgb(0 0 0 / 0.7) 0 75%, transparent 0) 0 0 / 4px 4px,
+      rgb(0 0 0 / 0.3);
+  }
+
+  /* Ambient (integrator): light = chunky pixel clouds drifting across; dark = a two-speed parallax
+     starfield. Both move in whole-pixel steps() for an 8-bit feel. */
+  :root[data-style="pixel"] {
+    --ambient-display: block;
+  }
+  [data-style="pixel"] .ui-ambient::before,
+  [data-style="pixel"] .ui-ambient::after {
+    image-rendering: pixelated;
+  }
+  [data-style="pixel"] .ui-ambient::before {
+    inset: 0 0 0 -720px;
+    background: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='720' height='300' shape-rendering='crispEdges'%3E%3Crect x='40' y='76' width='120' height='16' fill='%23eef6cf'/%3E%3Crect x='56' y='64' width='88' height='14' fill='%23eef6cf'/%3E%3Crect x='80' y='54' width='40' height='12' fill='%23eef6cf'/%3E%3Crect x='40' y='90' width='120' height='4' fill='%23d6e79a'/%3E%3Crect x='380' y='182' width='90' height='12' fill='%23eef6cf'/%3E%3Crect x='392' y='173' width='66' height='10' fill='%23eef6cf'/%3E%3Crect x='410' y='166' width='30' height='9' fill='%23eef6cf'/%3E%3Crect x='380' y='192' width='90' height='3' fill='%23d6e79a'/%3E%3Crect x='600' y='38' width='60' height='8' fill='%23eef6cf'/%3E%3Crect x='608' y='32' width='44' height='7' fill='%23eef6cf'/%3E%3Crect x='620' y='27' width='20' height='6' fill='%23eef6cf'/%3E%3Crect x='600' y='45' width='60' height='2' fill='%23d6e79a'/%3E%3C/svg%3E") 0 0 / 720px 300px;
+    opacity: 0.85;
+    animation: pixel-clouds 120s steps(240) infinite;
+  }
+  [data-style="pixel"] .ui-ambient::after {
+    content: none;
+  }
+  @keyframes pixel-clouds {
+    to {
+      transform: translateX(720px);
+    }
+  }
+
+  [data-style="pixel"][data-mode="dark"] .ui-ambient::before {
+    inset: -320px 0 0 0;
+    background: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' shape-rendering='crispEdges'%3E%3Crect x='231' y='286' width='2' height='2' fill='%239badb7'/%3E%3Crect x='231' y='260' width='2' height='2' fill='%23feae34'/%3E%3Crect x='97' y='94' width='2' height='2' fill='%23feae34'/%3E%3Crect x='243' y='314' width='2' height='2' fill='%23ffffff'/%3E%3Crect x='48' y='228' width='2' height='2' fill='%239badb7'/%3E%3Crect x='72' y='46' width='2' height='2' fill='%23feae34'/%3E%3Crect x='21' y='304' width='2' height='2' fill='%239badb7'/%3E%3C/svg%3E") 0 0 / 320px 320px;
+    opacity: 0.55;
+    animation: pixel-stars-slow 48s steps(160) infinite;
+  }
+  [data-style="pixel"][data-mode="dark"] .ui-ambient::after {
+    content: "";
+    inset: -480px 0 0 0;
+    background: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='480' shape-rendering='crispEdges'%3E%3Crect x='231' y='334' width='3' height='3' fill='%23feae34'/%3E%3Crect x='315' y='332' width='3' height='3' fill='%23ffffff'/%3E%3Crect x='319' y='7' width='3' height='3' fill='%23feae34'/%3E%3Crect x='32' y='30' width='3' height='3' fill='%23ffffff'/%3E%3C/svg%3E") 0 0 / 480px 480px;
+    opacity: 0.8;
+    animation: pixel-stars-fast 30s steps(160) infinite;
+  }
+  @keyframes pixel-stars-slow {
+    to {
+      transform: translateY(320px);
+    }
+  }
+  @keyframes pixel-stars-fast {
+    to {
+      transform: translateY(480px);
+    }
+  }
+}
