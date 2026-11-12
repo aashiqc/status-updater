@@ -1,0 +1,323 @@
+/* Base layer for the theme engine.
+   1. Default tokens (neutral; every theme overrides them).
+   2. Structural defaults for the ui-* hook classes, written only in terms of tokens.
+   Everything sits in @layer components so Tailwind layout utilities in the markup still win,
+   and theme files (also @layer components, higher specificity via [data-style]) override these. */
+
+@layer base {
+  :root {
+    color-scheme: light;
+    /* colours */
+    --canvas: #f2f2f2;
+    --surface: #ffffff;
+    --surface-2: #f7f7f7;
+    --surface-3: #ececec;
+    --surface-solid: var(--surface);
+    --code: #f7f7f7;
+    --line: #e2e2e2;
+    --line-strong: #cfcfcf;
+    --fg: #151419;
+    --muted: #4a4a4f;
+    --subtle: #707074;
+    --primary: #151419;
+    --primary-hover: #2b2a30;
+    --primary-fg: #ffffff;
+    --accent: #2563eb;
+    --accent-text: #1d4ed8;
+    --start: #15803d;
+    --pause: #b45309;
+    --stop: #dc2626;
+    --warn: #b45309;
+    --danger: #dc2626;
+    /* shape */
+    --r-panel: 14px;
+    --r-control: 8px;
+    --r-input: 8px;
+    /* type */
+    --font-body: ui-sans-serif, system-ui, sans-serif;
+    --font-heading: var(--font-body);
+    --font-code: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    /* decoration */
+    --deco-glyph: "✦";
+    --deco-display: none;
+  }
+  :root[data-mode="dark"] {
+    color-scheme: dark;
+    /* Dark themes use a bright --start, so the "Copied" flash needs dark text. */
+    --copied-fg: #0d0d10;
+  }
+
+  html {
+    background: var(--canvas);
+  }
+  body {
+    font-family: var(--font-body);
+    color: var(--fg);
+    min-height: 100dvh;
+    background: transparent;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before,
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+  body::before {
+    background: var(--backdrop, var(--canvas));
+  }
+  body::after {
+    background: var(--backdrop-overlay, none);
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--accent) 28%, transparent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  dialog::backdrop {
+    background: rgb(0 0 0 / 0.4);
+    backdrop-filter: blur(3px);
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+}
+
+@layer components {
+  /* Panels ---------------------------------------------------------------- */
+  .ui-panel {
+    background: var(--panel-bg, var(--surface));
+    border: 1px solid var(--line);
+    border-radius: var(--r-panel);
+    box-shadow: var(--panel-shadow, none);
+    backdrop-filter: var(--panel-blur, none);
+    -webkit-backdrop-filter: var(--panel-blur, none);
+  }
+  .ui-popover {
+    --panel-bg: var(--surface-solid);
+  }
+  .ui-panel.ui-popover {
+    box-shadow: var(--popover-shadow, 0 24px 48px -16px rgb(0 0 0 / 0.35));
+  }
+  .ui-titlebar {
+    background: var(--titlebar-bg, transparent);
+    border-bottom: 1px solid var(--line);
+    border-top-left-radius: calc(var(--r-panel) - 1px);
+    border-top-right-radius: calc(var(--r-panel) - 1px);
+  }
+  .ui-panel-footer {
+    background: var(--footer-bg, var(--surface-2));
+    border-top: 1px solid var(--line);
+    border-bottom-left-radius: calc(var(--r-panel) - 1px);
+    border-bottom-right-radius: calc(var(--r-panel) - 1px);
+  }
+  .ui-window-dots {
+    display: var(--window-dots-display, flex);
+  }
+
+  /* Ambient: an optional animated background layer behind the panels (off unless a theme sets
+     --ambient-display: block). The element and its ::before/::after are free for theme animation. */
+  .ui-ambient {
+    display: var(--ambient-display, none);
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+    contain: strict;
+  }
+  .ui-ambient::before,
+  .ui-ambient::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    will-change: transform, opacity;
+  }
+
+  /* Type ------------------------------------------------------------------- */
+  .ui-wordmark {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    color: var(--fg);
+    letter-spacing: -0.01em;
+  }
+  .ui-heading {
+    font-family: var(--font-heading);
+    font-weight: 700;
+  }
+  .ui-tagline {
+    color: var(--subtle);
+  }
+  .ui-label {
+    font-weight: 700;
+    color: var(--muted);
+  }
+  .ui-deco {
+    display: var(--deco-display);
+    color: var(--accent);
+    line-height: 1;
+  }
+  .ui-deco::before {
+    content: var(--deco-glyph);
+  }
+
+  /* Controls --------------------------------------------------------------- */
+  .ui-input {
+    background: var(--input-bg, var(--surface-2));
+    color: var(--fg);
+    border: 1px solid var(--line);
+    border-radius: var(--r-input);
+    box-shadow: var(--input-shadow, none);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .ui-input::placeholder {
+    color: color-mix(in oklab, var(--subtle) 75%, transparent);
+  }
+  .ui-input:hover {
+    border-color: var(--line-strong);
+  }
+  .ui-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 22%, transparent);
+  }
+  .ui-input[aria-invalid="true"] {
+    border-color: var(--warn);
+  }
+
+  .ui-btn {
+    border-radius: var(--r-control);
+    border: 1px solid transparent;
+    transition: background-color 0.15s, border-color 0.15s, filter 0.15s, transform 0.1s, box-shadow 0.15s;
+  }
+  .ui-btn-primary {
+    background: var(--primary);
+    color: var(--primary-fg);
+  }
+  .ui-btn-primary:hover:not(:disabled) {
+    background: var(--primary-hover);
+  }
+  .ui-btn-secondary {
+    background: var(--surface);
+    color: var(--fg);
+    border-color: var(--line-strong);
+  }
+  .ui-btn-secondary:hover:not(:disabled) {
+    background: var(--surface-2);
+  }
+  .ui-btn-ghost {
+    color: var(--muted);
+  }
+  .ui-btn-ghost:hover:not(:disabled) {
+    background: var(--surface-3);
+    color: var(--fg);
+  }
+  /* Transient "Copied" state always reads as success, whatever the theme. */
+  .ui-btn.ui-copied {
+    background: var(--start) !important;
+    border-color: var(--start) !important;
+    color: var(--copied-fg, #fff) !important;
+    text-shadow: none !important;
+    filter: none !important;
+  }
+
+  .ui-chip {
+    border-radius: var(--r-control);
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--muted);
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .ui-chip:hover {
+    border-color: var(--line-strong);
+    color: var(--fg);
+  }
+
+  .ui-seg {
+    border-radius: var(--r-control);
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+  }
+  .ui-seg-item,
+  .ui-tab {
+    border-radius: var(--r-control);
+    color: var(--subtle);
+    transition: background-color 0.15s, color 0.15s;
+  }
+  .ui-seg-item:hover,
+  .ui-tab:hover {
+    color: var(--fg);
+  }
+  .ui-tab {
+    font-family: var(--tab-font, var(--font-body));
+  }
+
+  /* One selected state for chips, segments, tabs and menu items. */
+  .ui-selected,
+  .ui-selected:hover {
+    background: var(--selected-bg, var(--surface-3));
+    color: var(--selected-fg, var(--fg));
+    border-color: var(--selected-border, transparent);
+    box-shadow: var(--selected-shadow, none);
+  }
+
+  .ui-switch {
+    border-radius: 9999px;
+    border: 1px solid var(--line);
+    background: var(--surface-3);
+    transition: background-color 0.15s;
+  }
+  .ui-switch[aria-checked="true"] {
+    background: var(--primary);
+    border-color: transparent;
+  }
+  .ui-switch-knob {
+    border-radius: 9999px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+  }
+
+  .ui-kbd {
+    border: 1px solid color-mix(in oklab, currentColor 22%, transparent);
+    border-radius: 4px;
+    font-family: var(--font-body);
+    opacity: 0.75;
+  }
+
+  /* Bits ------------------------------------------------------------------- */
+  .ui-dot {
+    border-radius: 9999px;
+    background: currentColor;
+  }
+  .ui-code {
+    background: var(--code);
+    border: 1px solid var(--line);
+    border-radius: var(--r-input);
+    font-family: var(--font-code);
+    color: var(--fg);
+  }
+  .ui-counter {
+    font-family: var(--font-code);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    padding: 0 5px;
+    border-radius: 5px;
+    background: var(--surface-3);
+    color: var(--fg);
+  }
+  .ui-toast {
+    background: var(--fg);
+    color: var(--canvas);
+    border-radius: var(--r-control);
+    box-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.4);
+  }
+}

@@ -1,87 +1,62 @@
-# Welcome to React Router!
+# Status Updater
 
-A modern, production-ready template for building full-stack React applications using React Router.
+Writes the START / PAUSE / STOP updates we post in Tazko task threads in Slack, formatted as a code block.
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/remix-run/react-router-templates/tree/main/default)
+## How to use it
 
-## Features
+1. Copy the Tazko task card (or your earlier START message) in Slack.
+2. Press `⌘V` anywhere on the page outside a text field, or click **Paste from Slack**. Project, task and reference fill in.
+3. Pick START, PAUSE or STOP, fill the rest, and press `⌘↵` (or **Copy**). Paste it in the thread.
 
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
+Pasting a START message switches you to STOP. The time taken is suggested from the START/PAUSE updates you copied here.
 
-## Getting Started
+## What it remembers (this browser only, in localStorage)
 
-### Installation
+- Your name, role (Dev/QA), theme and output settings
+- The form you were filling, so a reload doesn't lose it
+- **Open tasks**: anything you've STARTed and not STOPped, with one-click Pause / Stop
+- **History**: the last 100 updates you copied. You can search them, copy again, or edit and repost
 
-Install the dependencies:
+Nothing is sent to a server.
+
+## Shortcuts
+
+| Keys | Action |
+| --- | --- |
+| `⌘/Ctrl ↵` | Copy the update |
+| `⌥/Alt 1–3` | Switch to START / PAUSE / STOP |
+| `⌘/Ctrl V` | Fill the form from a Slack message (works inside fields too) |
+| `⌥/Alt N` | Clear the form |
+| `/` · `⇧ /` | Next · previous theme (outside text fields) |
+| `⌥/Alt M` | Light / dark |
+
+## Themes
+
+Pick a theme from the palette button in the header: **Lava** (default, the brand palette), **Glass**,
+**Vaporwave**, **Memphis**, **Pixel** and **Y2K**. Each has a light and a dark mode (Light / System / Dark).
+The choice is saved on this device and applied before first paint, and each theme's fonts load only when it's active.
+
+Themes are plain CSS files in `app/themes/`. They style a shared set of `ui-*` hook classes and colour tokens,
+so adding one is one CSS file plus an entry in `app/themes/registry.ts`. The rules are in `app/themes/README.md`.
+
+## Development
 
 ```bash
 npm install
+npm run dev        # http://localhost:5173
+npm run typecheck
+npm run build && npm start
 ```
 
-### Development
+Analytics: set `VITE_PUBLIC_POSTHOG_KEY` (and optionally `VITE_PUBLIC_POSTHOG_HOST`) at build time. PostHog loads lazily after the page is idle. Without a key it isn't bundled at all.
 
-Start the development server with HMR:
+Docker: `docker build -t status-updater . && docker run -p 3000:3000 status-updater`
 
-```bash
-npm run dev
-```
+## Code map
 
-Your application will be available at `http://localhost:5173`.
-
-## Building for Production
-
-Create a production build:
-
-```bash
-npm run build
-```
-
-## Deployment
-
-### Docker Deployment
-
-To build and run using Docker:
-
-```bash
-docker build -t my-app .
-
-# Run the container
-docker run -p 3000:3000 my-app
-```
-
-The containerized application can be deployed to any platform that supports Docker, including:
-
-- AWS ECS
-- Google Cloud Run
-- Azure Container Apps
-- Digital Ocean App Platform
-- Fly.io
-- Railway
-
-### DIY Deployment
-
-If you're familiar with deploying Node applications, the built-in app server is production-ready.
-
-Make sure to deploy the output of `npm run build`
-
-```
-├── package.json
-├── package-lock.json (or pnpm-lock.yaml, or bun.lockb)
-├── build/
-│   ├── client/    # Static assets
-│   └── server/    # Server-side code
-```
-
-## Styling
-
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
-
----
-
-Built with ❤️ using React Router.
+- `app/routes/home.tsx`: page state and actions
+- `app/lib/status.ts`: output format and the Slack/Tazko paste parser
+- `app/lib/duration.ts`: time parsing and formatting ("2h 30m", "2.5", "90m" → minutes → "~2.5h")
+- `app/lib/tasks.ts`: open tasks, history, time tracking from updates
+- `app/lib/storage.ts`: hydration-safe localStorage state
+- `app/components/`: form controls, sidebar, preview, paste dialog, theme toggle

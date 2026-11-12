@@ -1,0 +1,450 @@
+/* Vaporwave: neon synthwave sunset. Dark = purple-black night, hot pink + cyan neon;
+   light = pastel "Windows 95 meets the mall" daytime with the same pink/cyan accents.
+
+   Backdrop (pure CSS, static, painted once, never scrolls):
+   - body::before (--backdrop): sky + floor gradient, a few stars, the sun's halo (the neon grid is animated on .ui-ambient)
+     on the floor, a fog band that fades the grid into the horizon, a fade along the bottom edge so grid lines
+     never run through the footer text, and the glowing horizon line.
+     The horizon sits at 64% of the viewport; the floor box is the bottom 36%.
+     Grid geometry: ground lines z = 1 + 0.2(m + 0.35) sit at 1/z of the floor height below the horizon and
+     fade out toward it; rays x = 0.32n sit at atan(0.32n) from vertical, meeting at the vanishing point
+     (50% 0% of the floor box). Gradient stops must ascend, so the far lines are listed first.
+   - body::after (--backdrop-overlay + mask): the striped retro sun, a vertical gradient masked to a circle,
+     sinking behind the horizon (its bottom 28% is cut off at the horizon line). */
+
+@layer components {
+  :root[data-style="vaporwave"] {
+    --canvas: #f1e6ff;
+    --surface: rgb(255 250 255 / 0.82);
+    --surface-2: rgb(250 242 255 / 0.88);
+    --surface-3: rgb(232 214 255 / 0.88);
+    --surface-solid: #fdf8ff;
+    --code: rgb(253 249 255 / 0.9);
+    --line: rgb(150 84 214 / 0.26);
+    --line-strong: rgb(136 64 204 / 0.46);
+    --fg: #23103f;
+    --muted: #4b316f;
+    --subtle: #64508a;
+    --primary: #d4148c;
+    --primary-hover: #b80f78;
+    --primary-fg: #ffffff;
+    --accent: #0891b2;
+    --accent-text: #0b6680;
+    --start: #036a4a;
+    --pause: #934d00;
+    --stop: #b80d38;
+    --warn: #8a4700;
+    --danger: #b80d38;
+
+    --r-panel: 8px;
+    --r-control: 4px;
+    --r-input: 4px;
+    --font-body: "Rajdhani", ui-sans-serif, system-ui, sans-serif;
+    --font-heading: "Orbitron", "Rajdhani", ui-sans-serif, sans-serif;
+    --font-code: "Share Tech Mono", ui-monospace, Menlo, monospace;
+
+    --panel-blur: blur(14px) saturate(1.25);
+    --panel-shadow: inset 0 1px 0 rgb(255 255 255 / 0.7), 0 12px 30px -18px rgb(150 50 200 / 0.5);
+    --popover-shadow: 0 0 0 1px rgb(212 20 140 / 0.12), 0 24px 48px -16px rgb(80 24 130 / 0.4);
+    --titlebar-bg: linear-gradient(90deg, rgb(255 140 214 / 0.34), rgb(196 160 255 / 0.28) 50%, rgb(120 226 255 / 0.34));
+    --footer-bg: rgb(244 232 255 / 0.66);
+    --input-bg: rgb(255 255 255 / 0.8);
+    --input-shadow: inset 1px 1px 0 rgb(110 60 170 / 0.12);
+    --selected-bg: linear-gradient(180deg, rgb(255 255 255 / 0.96), rgb(255 214 240 / 0.92));
+    --selected-fg: var(--fg);
+    --selected-border: #d4148c;
+    --selected-shadow: inset 0 0 0 1px rgb(212 20 140 / 0.6), 0 2px 8px -3px rgb(212 20 140 / 0.45);
+    --tab-font: var(--font-heading);
+    --deco-glyph: "◢";
+    --deco-display: inline-block;
+    --window-dots-display: flex;
+
+    /* Theme-private tokens (light values). */
+    --vapor-sun: min(46vh, 72vw);
+    --vapor-sky-1: #b5efff;
+    --vapor-sky-2: #d3e3ff;
+    --vapor-sky-3: #ead6ff;
+    --vapor-sky-4: #ffd0ee;
+    --vapor-sky-5: #ffb8e0;
+    --vapor-floor-1: #f6dfff;
+    --vapor-floor-2: #e4d0ff;
+    --vapor-grid: rgb(176 70 214 / 0.34);
+    --vapor-horizon: rgb(255 96 200 / 0.85);
+    --vapor-bloom: rgb(255 130 214 / 0.32);
+    --vapor-halo: rgb(255 168 214 / 0.55);
+    --vapor-star: transparent;
+    --vapor-sun-1: #fff08a;
+    --vapor-sun-2: #ffc58a;
+    --vapor-sun-3: #ff9fae;
+    --vapor-sun-4: #ff7cc4;
+    --vapor-sun-5: #e46cf0;
+
+    --vapor-panel-edge: rgb(186 96 222 / 0.38);
+    --vapor-popover-edge: rgb(186 96 222 / 0.5);
+    --vapor-edge-1: rgb(212 20 140 / 0.5);
+    --vapor-edge-2: rgb(124 58 237 / 0.4);
+    --vapor-edge-3: rgb(8 145 178 / 0.5);
+    --vapor-wordmark: linear-gradient(90deg, #c2127f 0%, #7a2ee6 52%, #0a6a86 100%);
+    --vapor-wordmark-glow: rgb(255 120 210 / 0.5);
+    --vapor-deco: #d4148c;
+    --vapor-deco-glow: rgb(255 120 210 / 0.55);
+    --vapor-primary-bg: linear-gradient(90deg, #d4148c 0%, #a42bd8 60%, #7b2ff7 100%);
+    --vapor-primary-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 6px 18px -8px rgb(212 20 140 / 0.6);
+    --vapor-primary-shadow-hover: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 8px 22px -6px rgb(212 20 140 / 0.7);
+    --vapor-primary-text-shadow: 0 1px 0 rgb(60 0 50 / 0.25);
+    --vapor-btn2-bg: linear-gradient(180deg, #ffffff, #f3e8ff);
+    --vapor-btn2-hover: linear-gradient(180deg, #ffffff, #ffe6f6);
+    --vapor-btn2-edge: rgb(136 64 204 / 0.46);
+    --vapor-btn2-edge-hover: #d4148c;
+    --vapor-btn2-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 rgb(120 60 180 / 0.22);
+    --vapor-btn2-shadow-hover: inset 1px 1px 0 #ffffff, inset -1px -1px 0 rgb(120 60 180 / 0.22), 0 0 12px -4px rgb(212 20 140 / 0.5);
+    --vapor-chip-hover: rgb(212 20 140 / 0.5);
+    --vapor-chip-sel-bg: linear-gradient(180deg, #ffffff, #d9f6ff);
+    --vapor-chip-sel-edge: #0891b2;
+    --vapor-chip-sel-fg: #0b4a5e;
+    --vapor-chip-sel-shadow: 0 2px 8px -3px rgb(8 145 178 / 0.55);
+    --vapor-chip-sel-text-shadow: none;
+    --vapor-tab-glow: none;
+    --vapor-focus-glow: rgb(8 145 178 / 0.45);
+    --vapor-switch-on: linear-gradient(90deg, #d4148c, #7b2ff7);
+    --vapor-switch-glow: 0 0 10px -3px rgb(212 20 140 / 0.6);
+    --vapor-dot-glow: 45%;
+    --vapor-scan: rgb(110 50 180 / 0.045);
+    --vapor-code-edge: var(--line);
+    --vapor-code-shadow: inset 1px 1px 0 rgb(110 60 170 / 0.1);
+    --vapor-lcd-bg: #2b0f52;
+    --vapor-lcd-fg: #7cf7ff;
+    --vapor-lcd-glow: rgb(124 247 255 / 0.6);
+    --vapor-lcd-edge: rgb(124 247 255 / 0.35);
+    --vapor-toast-bg: #2b0f52;
+    --vapor-toast-fg: #fff0fb;
+    --vapor-toast-edge: #ff7ad9;
+    --vapor-toast-glow: rgb(255 122 217 / 0.55);
+
+    --backdrop:
+      linear-gradient(to bottom, transparent 56%, var(--vapor-bloom) calc(64% - 1.5px), var(--vapor-horizon) 64%, var(--vapor-bloom) calc(64% + 1.5px), transparent 70%),
+      linear-gradient(to bottom, var(--vapor-floor-1) 7%, color-mix(in srgb, var(--vapor-floor-1) 82%, transparent) 14%, color-mix(in srgb, var(--vapor-floor-1) 50%, transparent) 24%, color-mix(in srgb, var(--vapor-floor-1) 18%, transparent) 38%, transparent 56%) 0 100% / 100% 36% no-repeat,
+      linear-gradient(to top, var(--vapor-floor-2) 14px, transparent 60px),
+      radial-gradient(circle calc(var(--vapor-sun) * 0.95) at 50% calc(64% - var(--vapor-sun) * 0.22), var(--vapor-halo), transparent),
+      radial-gradient(circle, var(--vapor-star) 0 0.7px, transparent 1.4px) 5% 9% / 4px 4px no-repeat,
+      radial-gradient(circle, var(--vapor-star) 0 0.6px, transparent 1.3px) 23% 9% / 4px 4px no-repeat,
+      radial-gradient(circle, var(--vapor-star) 0 0.8px, transparent 1.5px) 44% 3% / 4px 4px no-repeat,
+      radial-gradient(circle, var(--vapor-star) 0 0.6px, transparent 1.3px) 49% 14% / 4px 4px no-repeat,
+      radial-gradient(circle, var(--vapor-star) 0 0.7px, transparent 1.4px) 62% 1.8% / 4px 4px no-repeat,
+      radial-gradient(circle, var(--vapor-star) 0 0.6px, transparent 1.3px) 74% 11% / 4px 4px no-repeat,
+      radial-gradient(circle, var(--vapor-star) 0 0.8px, transparent 1.5px) 53% 6% / 4px 4px no-repeat,
+      radial-gradient(circle, var(--vapor-star) 0 0.6px, transparent 1.3px) 95% 21% / 4px 4px no-repeat,
+      radial-gradient(circle, var(--vapor-star) 0 0.6px, transparent 1.3px) 3% 24% / 4px 4px no-repeat,
+      radial-gradient(circle, var(--vapor-star) 0 0.7px, transparent 1.4px) 15% 38% / 4px 4px no-repeat,
+      radial-gradient(circle, var(--vapor-star) 0 0.6px, transparent 1.3px) 83% 33% / 4px 4px no-repeat,
+      linear-gradient(to bottom, var(--vapor-sky-1) 0%, var(--vapor-sky-2) 30%, var(--vapor-sky-3) 46%, var(--vapor-sky-4) 57%, var(--vapor-sky-5) 64%, var(--vapor-floor-1) 64%, var(--vapor-floor-2) 100%),
+      var(--canvas);
+
+    /* The sun: a vertical ramp with widening gaps in its lower half, cut off at the horizon (72% of the disc). */
+    --backdrop-overlay: linear-gradient(to bottom, var(--vapor-sun-1) 0%, var(--vapor-sun-2) 24%, var(--vapor-sun-3) 40%, transparent 0 41.6%, var(--vapor-sun-3) 0, var(--vapor-sun-4) 46.5%, transparent 0 48.6%, var(--vapor-sun-4) 0, color-mix(in srgb, var(--vapor-sun-4), var(--vapor-sun-5)) 53%, transparent 0 55.7%, color-mix(in srgb, var(--vapor-sun-4), var(--vapor-sun-5)) 0, var(--vapor-sun-5) 59.6%, transparent 0 62.9%, var(--vapor-sun-5) 0 66.3%, transparent 0 70.2%, var(--vapor-sun-5) 0 72%, transparent 0) 50% calc(64% - var(--vapor-sun) * 0.08) / var(--vapor-sun) var(--vapor-sun) no-repeat;
+  }
+
+  :root[data-style="vaporwave"][data-mode="dark"] {
+    --canvas: #0d0221;
+    --surface: rgb(23 8 47 / 0.84);
+    --surface-2: rgb(12 3 30 / 0.62);
+    --surface-3: rgb(84 36 140 / 0.5);
+    --surface-solid: #1b0a36;
+    --code: rgb(8 2 22 / 0.72);
+    --line: rgb(196 128 255 / 0.22);
+    --line-strong: rgb(214 150 255 / 0.42);
+    --fg: #f7ecff;
+    --muted: #d8c6f2;
+    --subtle: #b6a3dc;
+    --primary: #ff2bd6;
+    --primary-hover: #ff5ce0;
+    --primary-fg: #1a0526;
+    --accent: #00f0ff;
+    --accent-text: #6ff8ff;
+    --start: #3dffa8;
+    --pause: #ffd84d;
+    --stop: #ff6b8b;
+    --warn: #ffbf4d;
+    --danger: #ff7090;
+
+    --panel-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 0 0 1px rgb(0 0 0 / 0.25), 0 0 32px -12px rgb(255 43 214 / 0.55);
+    --popover-shadow: 0 0 0 1px rgb(0 240 255 / 0.18), 0 0 36px -10px rgb(255 43 214 / 0.55), 0 24px 48px -16px rgb(0 0 0 / 0.65);
+    --titlebar-bg: linear-gradient(90deg, rgb(255 43 214 / 0.16), rgb(124 58 237 / 0.1) 50%, rgb(0 240 255 / 0.12));
+    --footer-bg: rgb(9 2 24 / 0.45);
+    --input-bg: rgb(9 2 24 / 0.55);
+    --input-shadow: inset 0 1px 2px rgb(0 0 0 / 0.4);
+    --selected-bg: linear-gradient(180deg, rgb(255 43 214 / 0.26), rgb(255 43 214 / 0.1));
+    --selected-fg: #ffffff;
+    --selected-border: #ff2bd6;
+    --selected-shadow: inset 0 0 0 1px rgb(255 43 214 / 0.8), 0 0 14px -3px rgb(255 43 214 / 0.75);
+
+    --vapor-sky-1: #0a0120;
+    --vapor-sky-2: #170533;
+    --vapor-sky-3: #2f0a55;
+    --vapor-sky-4: #5e1170;
+    --vapor-sky-5: #a3197c;
+    --vapor-floor-1: #2a0545;
+    --vapor-floor-2: #0d0222;
+    --vapor-grid: rgb(255 64 216 / 0.62);
+    --vapor-horizon: #ff8aea;
+    --vapor-bloom: rgb(255 60 200 / 0.38);
+    --vapor-halo: rgb(255 60 160 / 0.34);
+    --vapor-star: rgb(236 230 255 / 0.85);
+    --vapor-sun-1: #fff36e;
+    --vapor-sun-2: #ffb04a;
+    --vapor-sun-3: #ff6a6a;
+    --vapor-sun-4: #ff3d9a;
+    --vapor-sun-5: #e02bd8;
+
+    --vapor-panel-edge: rgb(255 80 220 / 0.3);
+    --vapor-popover-edge: rgb(0 240 255 / 0.4);
+    --vapor-edge-1: rgb(255 43 214 / 0.75);
+    --vapor-edge-2: rgb(139 92 246 / 0.6);
+    --vapor-edge-3: rgb(0 240 255 / 0.75);
+    --vapor-wordmark: linear-gradient(180deg, #ffffff 8%, #bdf6ff 38%, #6fe8ff 49%, #ff4fd8 51%, #ff8fe6 72%, #ffd9f6 95%);
+    --vapor-wordmark-glow: rgb(255 43 214 / 0.7);
+    --vapor-deco: #ff6be1;
+    --vapor-deco-glow: rgb(255 43 214 / 0.85);
+    --vapor-primary-bg: linear-gradient(90deg, #ff2bd6 0%, #ff5fa8 55%, #ff9a5c 100%);
+    --vapor-primary-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 0 18px -3px rgb(255 43 214 / 0.7), 0 0 40px -14px rgb(255 154 92 / 0.6);
+    --vapor-primary-shadow-hover: inset 0 1px 0 rgb(255 255 255 / 0.4), 0 0 24px -2px rgb(255 43 214 / 0.85), 0 0 48px -12px rgb(255 154 92 / 0.7);
+    --vapor-primary-text-shadow: none;
+    --vapor-btn2-bg: rgb(20 6 44 / 0.7);
+    --vapor-btn2-hover: rgb(0 240 255 / 0.1);
+    --vapor-btn2-edge: rgb(0 240 255 / 0.42);
+    --vapor-btn2-edge-hover: #00f0ff;
+    --vapor-btn2-shadow: inset 0 0 12px -6px rgb(0 240 255 / 0.5);
+    --vapor-btn2-shadow-hover: inset 0 0 12px -6px rgb(0 240 255 / 0.6), 0 0 14px -3px rgb(0 240 255 / 0.6);
+    --vapor-chip-hover: rgb(0 240 255 / 0.55);
+    --vapor-chip-sel-bg: rgb(0 240 255 / 0.14);
+    --vapor-chip-sel-edge: #00f0ff;
+    --vapor-chip-sel-fg: #e6feff;
+    --vapor-chip-sel-shadow: inset 0 0 8px -2px rgb(0 240 255 / 0.35), 0 0 12px -3px rgb(0 240 255 / 0.7);
+    --vapor-chip-sel-text-shadow: 0 0 6px rgb(0 240 255 / 0.55);
+    --vapor-tab-glow: 0 0 8px rgb(255 43 214 / 0.9);
+    --vapor-focus-glow: rgb(0 240 255 / 0.6);
+    --vapor-switch-on: linear-gradient(90deg, #ff2bd6, #8b5cf6);
+    --vapor-switch-glow: 0 0 12px -2px rgb(255 43 214 / 0.75);
+    --vapor-dot-glow: 75%;
+    --vapor-scan: rgb(255 255 255 / 0.03);
+    --vapor-code-edge: rgb(0 240 255 / 0.22);
+    --vapor-code-shadow: inset 0 0 22px -6px rgb(0 240 255 / 0.16);
+    --vapor-lcd-bg: #070112;
+    --vapor-lcd-fg: #00f0ff;
+    --vapor-lcd-glow: rgb(0 240 255 / 0.7);
+    --vapor-lcd-edge: rgb(0 240 255 / 0.35);
+    --vapor-toast-bg: #1c0a3a;
+    --vapor-toast-fg: #fbeeff;
+    --vapor-toast-edge: #ff2bd6;
+    --vapor-toast-glow: rgb(255 43 214 / 0.6);
+  }
+
+  /* Backdrop: the sun on body::after, masked to a disc sitting on the horizon. */
+  [data-style="vaporwave"] body::after {
+    -webkit-mask: radial-gradient(circle closest-side, #000 calc(100% - 1.5px), transparent) 50% calc(64% - var(--vapor-sun) * 0.08) / var(--vapor-sun) var(--vapor-sun) no-repeat;
+    mask: radial-gradient(circle closest-side, #000 calc(100% - 1.5px), transparent) 50% calc(64% - var(--vapor-sun) * 0.08) / var(--vapor-sun) var(--vapor-sun) no-repeat;
+  }
+
+  /* Rajdhani is narrow and light: lift the default body weight. */
+  [data-style="vaporwave"] body {
+    font-weight: 500;
+  }
+
+  /* Panels ---------------------------------------------------------------- */
+  [data-style="vaporwave"] .ui-panel {
+    border-color: var(--vapor-panel-edge);
+  }
+  [data-style="vaporwave"] .ui-panel.ui-popover {
+    border-color: var(--vapor-popover-edge);
+  }
+  /* Neon pink → violet → cyan rule under every title bar. */
+  [data-style="vaporwave"] .ui-titlebar {
+    border-image: linear-gradient(90deg, var(--vapor-edge-1), var(--vapor-edge-2) 50%, var(--vapor-edge-3)) 1;
+  }
+
+  /* Type ------------------------------------------------------------------- */
+  [data-style="vaporwave"] .ui-wordmark {
+    font-weight: 900;
+    letter-spacing: 0.015em;
+    background: var(--vapor-wordmark);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 0 6px var(--vapor-wordmark-glow));
+  }
+  [data-style="vaporwave"] .ui-tagline {
+    letter-spacing: 0.04em;
+  }
+  [data-style="vaporwave"] .ui-heading {
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+  [data-style="vaporwave"] .ui-label {
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+  }
+  [data-style="vaporwave"] .ui-deco {
+    color: var(--vapor-deco);
+    text-shadow: 0 0 8px var(--vapor-deco-glow);
+    animation: vapor-pulse 4.8s ease-in-out infinite;
+  }
+  @keyframes vapor-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.55;
+    }
+  }
+
+  /* Inputs ----------------------------------------------------------------- */
+  [data-style="vaporwave"] .ui-input:focus {
+    border-color: var(--accent);
+    box-shadow: var(--input-shadow), 0 0 0 1px var(--accent), 0 0 16px -3px var(--vapor-focus-glow);
+  }
+
+  /* Buttons ---------------------------------------------------------------- */
+  [data-style="vaporwave"] .ui-btn-primary {
+    font-family: var(--font-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  [data-style="vaporwave"] .ui-btn-primary:not(.ui-copied) {
+    background: var(--vapor-primary-bg);
+    box-shadow: var(--vapor-primary-shadow);
+    text-shadow: var(--vapor-primary-text-shadow);
+  }
+  [data-style="vaporwave"] .ui-btn-primary:hover:not(:disabled):not(.ui-copied) {
+    background: var(--vapor-primary-bg);
+    box-shadow: var(--vapor-primary-shadow-hover);
+  }
+  [data-style="vaporwave"][data-mode="dark"] .ui-btn-primary:hover:not(:disabled):not(.ui-copied) {
+    filter: brightness(1.08) saturate(1.1);
+  }
+  [data-style="vaporwave"] .ui-btn-secondary {
+    background: var(--vapor-btn2-bg);
+    border-color: var(--vapor-btn2-edge);
+    box-shadow: var(--vapor-btn2-shadow);
+  }
+  [data-style="vaporwave"] .ui-btn-secondary:hover:not(:disabled) {
+    background: var(--vapor-btn2-hover);
+    border-color: var(--vapor-btn2-edge-hover);
+    box-shadow: var(--vapor-btn2-shadow-hover);
+  }
+
+  /* Chips, segments, tabs -------------------------------------------------- */
+  [data-style="vaporwave"] .ui-chip:hover {
+    border-color: var(--vapor-chip-hover);
+  }
+  /* Selected chips glow cyan; tabs, segments and menu items glow pink (the shared --selected-* tokens). */
+  [data-style="vaporwave"] .ui-chip.ui-selected,
+  [data-style="vaporwave"] .ui-chip.ui-selected:hover {
+    background: var(--vapor-chip-sel-bg);
+    border-color: var(--vapor-chip-sel-edge);
+    color: var(--vapor-chip-sel-fg);
+    box-shadow: var(--vapor-chip-sel-shadow);
+    text-shadow: var(--vapor-chip-sel-text-shadow);
+  }
+  [data-style="vaporwave"] .ui-tab {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  [data-style="vaporwave"] .ui-titlebar .ui-tab.ui-selected {
+    text-shadow: var(--vapor-tab-glow);
+  }
+  /* Theme menu items are ui-tabs too; keep them in the readable body face. */
+  [data-style="vaporwave"] .ui-popover .ui-tab {
+    font-family: var(--font-body);
+    text-transform: none;
+    letter-spacing: normal;
+  }
+
+  [data-style="vaporwave"] .ui-switch {
+    border-radius: var(--r-control);
+    border-color: var(--line-strong);
+  }
+  [data-style="vaporwave"] .ui-switch[aria-checked="true"] {
+    background: var(--vapor-switch-on);
+    box-shadow: var(--vapor-switch-glow);
+  }
+  [data-style="vaporwave"] .ui-switch-knob {
+    border-radius: calc(var(--r-control) - 2px);
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
+  }
+
+  /* Bits ------------------------------------------------------------------- */
+  /* Square LED status lights. */
+  [data-style="vaporwave"] .ui-dot {
+    border-radius: calc(var(--r-control) / 2);
+    box-shadow: 0 0 6px color-mix(in srgb, currentColor var(--vapor-dot-glow), transparent);
+  }
+  /* CRT scanlines behind the message preview. */
+  [data-style="vaporwave"] .ui-code {
+    background:
+      repeating-linear-gradient(to bottom, var(--vapor-scan) 0 1px, transparent 1px 3px),
+      var(--code);
+    border-color: var(--vapor-code-edge);
+    box-shadow: var(--vapor-code-shadow);
+  }
+  /* Neon LCD hit counter. */
+  [data-style="vaporwave"] .ui-counter {
+    background: var(--vapor-lcd-bg);
+    color: var(--vapor-lcd-fg);
+    border-radius: var(--r-input);
+    text-shadow: 0 0 6px var(--vapor-lcd-glow);
+    box-shadow: inset 0 0 0 1px var(--vapor-lcd-edge);
+  }
+  [data-style="vaporwave"] .ui-toast {
+    background: var(--vapor-toast-bg);
+    color: var(--vapor-toast-fg);
+    box-shadow:
+      inset 0 0 0 1px var(--vapor-toast-edge),
+      0 0 24px -6px var(--vapor-toast-glow),
+      0 12px 30px -12px rgb(0 0 0 / 0.5);
+  }
+
+  [data-style="vaporwave"] dialog::backdrop {
+    background: rgb(60 18 100 / 0.3);
+  }
+  [data-style="vaporwave"][data-mode="dark"] dialog::backdrop {
+    background: rgb(8 1 22 / 0.6);
+  }
+
+  /* Integrator: with content-height panels the footer can sit over the sun, so give its text a night halo. */
+  [data-style="vaporwave"] footer {
+    color: var(--muted);
+    text-shadow: 0 0 2px var(--canvas), 0 0 6px var(--canvas), 0 0 12px var(--canvas);
+  }
+
+  /* Ambient (integrator): the neon floor grid, rolling toward the viewer from the horizon (64%). */
+  :root[data-style="vaporwave"] {
+    --ambient-display: block;
+  }
+  [data-style="vaporwave"] .ui-ambient::before {
+    inset: auto;
+    left: -60%;
+    right: -60%;
+    top: 64%;
+    height: 110%;
+    background-image:
+      linear-gradient(to bottom, var(--vapor-grid) 0 2px, transparent 2px),
+      linear-gradient(to right, var(--vapor-grid) 0 2px, transparent 2px);
+    background-size: 54px 54px;
+    background-position: 50% 0;
+    transform-origin: 50% 0;
+    transform: perspective(240px) rotateX(70deg);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgb(0 0 0 / 0.5) 8%, #000 30%);
+    mask-image: linear-gradient(to bottom, transparent 0%, rgb(0 0 0 / 0.5) 8%, #000 30%);
+    animation: vapor-grid 2.2s linear infinite;
+  }
+  [data-style="vaporwave"] .ui-ambient::after {
+    content: none;
+  }
+  @keyframes vapor-grid {
+    to {
+      background-position: 50% 54px;
+    }
+  }
+}

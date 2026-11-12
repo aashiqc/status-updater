@@ -1,15 +1,60 @@
 @import "tailwindcss";
 
-@theme {
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+/* Theme engine. <html data-style="lava|y2k|glass|vaporwave|memphis|pixel" data-mode="light|dark">,
+   both set before first paint by the boot script in app/themes/registry.ts. Every theme lives in its own
+   file under app/themes/ and follows the contract in app/themes/README.md. */
+@import "./themes/base.css";
+@import "./themes/lava.css";
+@import "./themes/y2k.css";
+@import "./themes/glass.css";
+@import "./themes/vaporwave.css";
+@import "./themes/memphis.css";
+@import "./themes/pixel.css";
+
+@theme inline {
+  --font-sans: var(--font-body);
+  --font-display: var(--font-heading);
+  --font-mono: var(--font-code);
+
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-code: var(--code);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-fg: var(--primary-fg);
+  --color-accent: var(--accent);
+  --color-accent-text: var(--accent-text);
+  --color-start: var(--start);
+  --color-pause: var(--pause);
+  --color-stop: var(--stop);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
 }
 
-html,
-body {
-  @apply bg-white dark:bg-gray-950;
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 
-  @media (prefers-color-scheme: dark) {
-    color-scheme: dark;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
